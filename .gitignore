@@ -1,5 +1,9 @@
 # Using https://github.com/github/gitignore/blob/master/Python.gitignore
 
+# local stuff
+data/
+models/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -148,5 +152,3 @@ cython_debug/
 # vscode
 .vscode/
 
-# datafolder
-data/
