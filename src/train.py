@@ -10,6 +10,7 @@ import gc
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch.nn as nn
 import numpy as np
@@ -108,6 +109,15 @@ def calculate_precision(predictions, labels):
     return macro_precision
 
 
+def calculate_accuracy(predictions, labels):
+
+    correct = (predictions == labels).sum().item()
+    total = labels.size(0)
+    accuracy = correct / total
+
+    return accuracy
+
+
 def evaluate(model: nn.Module, loader: DataLoader):
     
     all_preds = []
@@ -125,33 +135,33 @@ def evaluate(model: nn.Module, loader: DataLoader):
     all_preds = torch.cat(all_preds)
     all_labels = torch.cat(all_labels)
     
-    correct = (all_preds == all_labels).sum().item()
-    total = all_labels.size(0)
-    accuracy = correct / total
-
+    accuracy = calculate_accuracy(all_preds, all_labels)
     precision = calculate_precision(all_preds, all_labels)
     
     return accuracy, precision
 
 
-def train(train_loader : DataLoader, model : nn.Module, config : dict):
+def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp : str):
 
     device = config['device']
     epochs = config['epochs']
     lr = config['lr']
 
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
     model.train()
 
-    logger.info(f'Training model for {epochs} epochs')
+    logger.info(f'Classes : {train_loader.dataset.classes}')
+    logger.info(f'Epochs : {epochs}')
     logger.info(f'Batch size: {batch_size}')
     logger.info(f'Learning rate: {lr}')
     logger.info(f'Using device: {device}')
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss().to(device)
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+
+    accuracy_log = []
+    precision_log = []
+    loss_log = []
 
     with tqdm(total=epochs * len(train_loader)) as pbar:
         
@@ -165,8 +175,10 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict):
                 output = model(data)
 
                 loss = criterion(output, ytrue)
+
                 loss.backward()
                 
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
 
                 pbar.update(1)
@@ -178,8 +190,20 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict):
 
             pbar.set_description(f'epoch {i+1}:{epochs} | loss: {loss:.4f} | acc: {accuracy:.4f} | prec: {precision:.4f}')
 
+            # convert accuracy and precision to float
+            accuracy = float(accuracy)
+            precision = float(precision)
+            loss = float(loss)
+
+            accuracy_log.append(accuracy)
+            precision_log.append(precision)
+            loss_log.append(loss)
+
     # save model
     # torch.save(model.state_dict(), f'./models/model_{timestamp}.pth')
+
+    return accuracy_log, precision_log, loss_log
+
 
 def clear_gpu_memory():
     
@@ -193,8 +217,19 @@ def clear_gpu_memory():
     logger.info('Cleared GPU memory')
 
 
+def plot_results(accuracy_log, precision_log, loss_log, timestamp : str):
+    
+    plt.plot(accuracy_log, label='Accuracy')
+    plt.plot(precision_log, label='Precision')
+    plt.plot(loss_log, label='Loss')
+    plt.legend()
+    plt.savefig(f'./log/results_{timestamp}.png')
+
+
 if __name__ == '__main__':
     
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
     clear_gpu_memory()
 
     if not os.path.isfile('./README.md'):
@@ -203,8 +238,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--batch_size', type=int, default=8)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--lr', type=float, default=0.001)
     args = parser.parse_args()
 
@@ -214,13 +249,17 @@ if __name__ == '__main__':
     device = args.device
 
     # classes = [0, 1]
+    # classes = [0, 1]
     classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     traindata = InsectDataset('./data/InsectSound_TRAIN.arff', device, classes)
-    
     train_loader = DataLoader(traindata, batch_size=args.batch_size, shuffle=True)
 
-    model = CNNMini(len(traindata.classes)).to(device)
+    # model = CNNMini(len(traindata.classes)).to(device)
+    model = ResNet50(len(traindata.classes)).to(device)
+
+    # log pythonclass name
+    logger.info(f"Using model: {model.__class__.__name__}")
 
     config = {
         'device': device,
@@ -228,7 +267,7 @@ if __name__ == '__main__':
         'lr': lr,
     }
 
-    train(train_loader, model, config)
+    accuracy_log, precision_log, loss_log = train(train_loader, model, config, timestamp)
 
     logger.info('Evaluating model on test set...')
     
@@ -239,3 +278,5 @@ if __name__ == '__main__':
 
     logger.info(f'Validation accuracy: {accuracy:.4f}')
     logger.info(f'Validation precision: {precision:.4f}')
+
+    plot_results(accuracy_log, precision_log, loss_log, timestamp)
