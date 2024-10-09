@@ -1,15 +1,14 @@
-# project_ikt463
 This repository holds the code for the IKT463 (AI in Society) project.
 
+# Datasets
 
-## Dataset info
+## InsectSound
 
-### InsectSound
-
+- download link : https://www.timeseriesclassification.com/description.php?Dataset=InsectSound
 - trainsize : 25 000
 - testsize : 25 000
 
-##### class names
+### class names
 
 - Aedes_female: 0
 - Aedes_male: 1
@@ -22,3 +21,6 @@ This repository holds the code for the IKT463 (AI in Society) project.
 - Tarsalis_female: 8
 - Tarsalis_male: 9
 
+## ECG
+
+- download link : https://www.timeseriesclassification.com/description.php?Dataset=ECG
