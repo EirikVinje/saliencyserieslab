@@ -8,7 +8,7 @@ This repository holds the code for the IKT463 (AI in Society) project.
 
 ```bash
 
-cd projects/project_ikt463
+cd ~/projects/project_ikt463
 cd data
 wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
 unzip -j InsectSound.zip
