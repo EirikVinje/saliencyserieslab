@@ -4,9 +4,18 @@ This repository holds the code for the IKT463 (AI in Society) project.
 
 ## InsectSound
 
-- download link : https://www.timeseriesclassification.com/description.php?Dataset=InsectSound
-- trainsize : 25 000
-- testsize : 25 000
+### Download
+
+python```
+
+cd projects/project_ikt463
+cd data
+wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
+unzip -j InsectSound.zip
+
+```
+
+
 
 ### class names
 
