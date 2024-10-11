@@ -125,10 +125,15 @@ if __name__ == '__main__':
         'lr': args.lr,
         'batch_size': args.batch_size,
         'modelname': args.model,
-        'classes': [0, 1, 2, 3, 4, 5, 6, 7],
+        'classes': ["all"],
         'trainpath' : './data/InsectSound_TRAIN.arff',
         'testpath' : './data/InsectSound_TEST.arff'
     }
+
+    config["classes"] = ['Aedes_female',
+                        'Aedes_male',
+                        'Fruit_flies',
+                        'House_flies',]
 
     logger.info(f'Loading train from : {config["trainpath"]}')
     traindata = InsectDataset(config['trainpath'], config['device'], config['classes'])
@@ -139,6 +144,8 @@ if __name__ == '__main__':
     logger.info(f"Using model: {config['modelname']}")
 
     modelstate, accuracy_log, precision_log, loss_log = train(train_loader, model, config, timestamp)
+    
+    assert False
 
     #! TODO : save model and load model to explain.py
     #! TODO : Finish LIME

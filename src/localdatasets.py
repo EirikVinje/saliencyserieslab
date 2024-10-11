@@ -2,55 +2,86 @@ from typing import List
 
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+from scipy.io.arff import loadarff
 import torch
-import arff
+
 
 class InsectDataset(torch.utils.data.Dataset):
     def __init__(self, 
                  path: str, 
                  device: str, 
-                 classes: List[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+                 classes: List[str] = ["all"], 
                  transform=None,
                  seed: int = 42):
         
         self.device = device
         self.transform = transform
         
-        self.labels_to_num = {
-            'Aedes_female': 0, 
-            'Aedes_male': 1, 
-            'Fruit_flies': 2,
-            'House_flies': 3, 
-            'Quinx_female': 4, 
-            'Quinx_male': 5,
-            'Stigma_female': 6, 
-            'Stigma_male': 7, 
-            'Tarsalis_female': 8,
-            'Tarsalis_male': 9
-        }
+        self.class_names = [
+                'Aedes_female',
+                'Aedes_male',
+                'Fruit_flies',
+                'House_flies',
+                'Quinx_female',
+                'Quinx_male',
+                'Stigma_female',
+                'Stigma_male',
+                'Tarsalis_female',
+                'Tarsalis_male'
+                ]
 
-        self.num_to_labels = {v: k for k, v in self.labels_to_num.items()}
-        
-        with open(path, 'r') as f:
-            data = arff.load(f)
-        
-        all_x = np.array([s[:-1] for s in data["data"]], dtype=np.float32)
-        all_y = np.array([self.labels_to_num[s[-1]] for s in data["data"]], dtype=np.int64)
+        data = loadarff(open(path, 'r'))
 
-        if classes is None:
-            self.x = torch.tensor(all_x, dtype=torch.float32)
-            self.y = torch.tensor(all_y, dtype=torch.long)
+        data = [list(d) for d in data[0]]
+
+        data = np.array(data, dtype=object)
+
+        data_x = data[:, :-1]
+        data_y = data[:, -1]
+
+        bytes_to_str = np.vectorize(lambda x: x.decode('utf-8'))
+        data_y = bytes_to_str(data_y)
+
+        if classes == ["all"]:
+            self.x = torch.tensor(data_x, dtype=torch.float32)
+            self.y = torch.tensor(data_y, dtype=torch.long)
         
         else:
-            mask = []
-            for c in classes:
-                mask.extend(np.where(all_y == c)[0].tolist())
-            
-            self.x = torch.tensor(all_x[mask], dtype=torch.float32)
-            self.y = torch.tensor(all_y[mask], dtype=torch.long)
+            empty_x = np.zeros((2500*len(classes), 600), dtype=np.float32)
+            empty_y = np.zeros(2500*len(classes), dtype=np.int64)
 
-        self.classes = torch.unique(self.y).tolist()
-    
+            for i, c in enumerate(classes):
+                
+                if c not in self.class_names:
+                    raise ValueError(f'Class {c} not in {self.class_names}')
+
+                is_class = np.where(data_y == c)[0]
+
+                empty_x[i*2500:(i+1)*2500, :] = data_x[is_class, :]
+                empty_y[i*2500:(i+1)*2500] = np.repeat(i, 2500)
+
+        self.x = torch.tensor(empty_x, dtype=torch.float32)
+        self.y = torch.tensor(empty_y, dtype=torch.long)
+
+        self.classes = [i for i in range(len(classes))]
+
+    @staticmethod
+    def get_class_names():
+        
+        classes = [
+            'Aedes_female',
+            'Aedes_male',
+            'Fruit_flies',
+            'House_flies',
+            'Quinx_female',
+            'Quinx_male',
+            'Stigma_female',
+            'Stigma_male',
+            'Tarsalis_female',
+            'Tarsalis_male'
+        ]
+
+        return classes
 
     def __len__(self):
         return len(self.x)
