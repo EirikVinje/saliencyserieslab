@@ -6,7 +6,7 @@ This repository holds the code for the IKT463 (AI in Society) project.
 
 ### Download
 
-python```
+```python
 
 cd projects/project_ikt463
 cd data
