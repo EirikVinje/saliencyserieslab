@@ -3,6 +3,8 @@
 # local stuff
 data/
 models/
+plots/
+notebooks/
 log/
 
 # Byte-compiled / optimized / DLL files
