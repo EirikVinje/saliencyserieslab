@@ -1,6 +1,6 @@
 import torch
 
-from lime import lime_explainer
+# from lime import lime_explainer
 
 
 def load_model(model_path: str):
