@@ -1,7 +1,7 @@
     #!/bin/bash -e
 
-    if [ "$(basename "$PWD")" != "project_ikt463" ]; then
-        echo "Error: You are not in the project root directory (project_ikt463)."
+    if [ "$(basename "$PWD")" != "saliencyserieslab" ]; then
+        echo "Error: You are not in the project root directory (saliencyserieslab)."
         echo "Please navigate to the correct directory and run this script again."
         exit 1
     fi
@@ -17,4 +17,12 @@
 
     cd data
     wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
-    unzip -j InsectSound.zip
+    unzip InsectSound.zip
+    mkdir insectsound
+    mv InsectSound/* insectsound
+    rm -rf InsectSound.zip
+    rm -rf InsectSound
+
+    echo "Installing dependencies..."
+
+    pip install -r requirements.txt
