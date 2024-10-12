@@ -98,7 +98,7 @@ class InsectDataset(torch.utils.data.Dataset):
         return classes
 
     def __len__(self):
-        return len(self.x)
+        return self.x.shape[0]
     
     def __getitem__(self, idx: int):
         

@@ -1,11 +1,26 @@
+from typing import List
+import argparse
+import datetime
+import logging
+import json
 
 from sklearn.linear_model import LogisticRegression
 from scipy.spatial.distance import euclidean
-# from dtaidistance import dtw
+from scipy.special import softmax
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import numpy as np
 import torch
 
+from localdatasets import InsectDataset
+from modelutils import load_state_dict
+from modelutils import model_selection
+
+torch.manual_seed(42)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
+logger = logging.getLogger('src')
 
 def distance(original, perturbed, method='dtw', sigma=1.0):
     """
@@ -34,7 +49,11 @@ def distance(original, perturbed, method='dtw', sigma=1.0):
     return similarity
 
 
-def perturb_data(timeseries, num_samples=1000, segment_size=10, perturbation_ratio=0.3, adjacency_prob=0.7):
+def perturb_data(x : np.ndarray, 
+                 num_samples : int=1000, 
+                 segment_size : int=10, 
+                 perturbation_ratio : int=0.3, 
+                 adjacency_prob : int=0.7):
     """
     Create perturbed samples of a time series with adjacent segments more likely to be perturbed together.
     
@@ -46,9 +65,11 @@ def perturb_data(timeseries, num_samples=1000, segment_size=10, perturbation_rat
     :return: Perturbed samples and their binary representations
     """
     
+    assert len(x.shape) == 1, "Input must be a 1D numpy array"
+    
     # Ensure the timeseries length is divisible by segment_size
-    padded_length = ((len(timeseries) - 1) // segment_size + 1) * segment_size
-    padded_timeseries = np.pad(timeseries, (0, padded_length - len(timeseries)), mode='constant', constant_values=0)
+    padded_length = ((x.shape[0] - 1) // segment_size + 1) * segment_size
+    padded_timeseries = np.pad(x, (0, padded_length - x.shape[0]), mode='constant', constant_values=0)
     
     # Convert to float to allow for noise addition
     padded_timeseries = padded_timeseries.astype(float)
@@ -95,13 +116,13 @@ def perturb_data(timeseries, num_samples=1000, segment_size=10, perturbation_rat
             if method == 'zero':
                 perturbed[start:end] = 0
             elif method == 'noise':
-                perturbed[start:end] += np.random.normal(0, np.std(timeseries), segment_size)
+                perturbed[start:end] += np.random.normal(0, np.std(x), segment_size)
             elif method == 'shuffle':
                 np.random.shuffle(perturbed[start:end])
             
             binary_rep[idx] = 0
         
-        perturbed_samples.append(perturbed[:len(timeseries)])
+        perturbed_samples.append(perturbed[:x.shape[0]])
         binary_representations.append(binary_rep)
     
     return np.array(perturbed_samples), np.array(binary_representations)
@@ -109,31 +130,47 @@ def perturb_data(timeseries, num_samples=1000, segment_size=10, perturbation_rat
 
 
 def lime_explainer(model : nn.Module,
-                   x : np.ndarray,
-                   y : np.ndarray,
-                   perturbation_ratio : float=0.3, 
+                   config : dict,
+                   data : List=[torch.tensor, torch.tensor],
+                   perturbation_ratio : float=0.5, 
                    adjacency_prob : float=0.7,
-                   num_samples : int=1000, 
-                   segment_size : int=10,
+                   num_samples : int=5000, 
+                   segment_size : int=6,
                    sigma : float=0.1):
-    
-    x_perturb, binary_rep = perturb_data(x, num_samples, segment_size, perturbation_ratio, adjacency_prob)
-    
-    x_perturb = torch.from_numpy(x_perturb).to(torch.float32).to(model.device)
 
-    model.eval()
+    x, y = data
+
+    x = x.reshape(1, -1)
+
+    with torch.no_grad():
+        output = model(x)
+        ypred = torch.argmax(output, dim=-1)
+        assert ypred == y, "Model prediction is wrong"
+
+    x = x.cpu().numpy().reshape(-1)
+
+    x_perturb, binary_rep = perturb_data(x, num_samples, segment_size, perturbation_ratio, adjacency_prob)
+
+    weights = [distance(x, x_perturb[i], method='euclidean') for i in range(len(x_perturb))]
+    
+    x_perturb = torch.from_numpy(x_perturb).to(torch.float32).to(config['device'])
+
     with torch.no_grad():
         output = model(x_perturb)
         predictions = torch.argmax(output, dim=-1)
+        predictions = predictions.cpu().numpy()
 
-    weights = [distance(x, x_perturb[i], method='euclidean') for i in range(len(x_perturb))]
+    logreg = LogisticRegression(solver='lbfgs')
 
-    logreg = LogisticRegression(multi_class='multinomial', solver='lbfgs')
-
-    logreg.fit(x_perturb, predictions, sample_weight=weights)
+    logreg.fit(binary_rep, predictions, sample_weight=weights)
 
     # get logreg weights
     w = logreg.coef_[0]
+
+    # softmax the weights
+    w = sorted(softmax(w), reverse=True)
+
+    
 
     print(w)
 
@@ -141,19 +178,36 @@ def lime_explainer(model : nn.Module,
 
 if __name__ == '__main__':
     
-    np.random.seed(42)  
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
     
-    original_timeseries = np.array([1, 1, 1, 2, 3, 4, 5, 4, 3, 2, 1, 1, 1], dtype=float)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
-    perturbed_samples, binary_reps = perturb_data(original_timeseries, 
-                                                num_samples=1, 
-                                                segment_size=3, 
-                                                perturbation_ratio=0.8,
-                                                adjacency_prob=0.5)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    print("Original timeseries:", original_timeseries)
-    print("Perturbed sample:   ", perturbed_samples[0])
-    print("Binary representation:", binary_reps[0])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='./modelconfig.json', help='Path to config file')
+    parser.add_argument('--model', type=str, default="./models/resnet_20241012_143542.pth", help='Path to model file, e.g ./models/resnet_20221017_092600.pth')
+    args = parser.parse_args()
 
-    similarity = distance(original_timeseries, perturbed_samples[0], method='euclidean')
-    print("Similarity:         ", similarity)
+    config_path = args.config
+    state_dict_path = args.model
+
+    with open(config_path, 'r') as json_file:
+        config = json.load(json_file)
+    logger.info(f'Loaded config from : {config_path}')
+
+    evaldata = InsectDataset(config['testpath'], config['device'], config['classes'])
+    eval_loader = DataLoader(evaldata, batch_size=config['batch_size'], shuffle=False)
+    logger.info(f'Loaded eval data from : {config["testpath"]}')
+
+    model = model_selection(config, n_classes=evaldata.n_classes)
+    state_dict = load_state_dict(state_dict_path)
+    model.load_state_dict(state_dict)
+    model = model.to(config['device'])
+    model.eval()
+    logger.info(f'Loaded model from : {state_dict_path}')
+
+    lime_explainer(model, config, evaldata.__getitem__(0))

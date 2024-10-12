@@ -33,7 +33,7 @@ def calculate_precision(predictions, labels):
             precision = true_positives / predicted_positives if predicted_positives > 0 else torch.tensor(0.0)
             precisions.append(precision)
         
-        macro_precision = torch.tensor(precisions).mean()
+        macro_precision = torch.tensor(precisions).mean().item()
     
     return macro_precision
 
@@ -88,25 +88,24 @@ if __name__ == "__main__":
     parser.add_argument('--model', type=str, required=True, help='Path to model file, e.g ./models/resnet_20221017_092600.pth')
     args = parser.parse_args()
 
-    config = args.config
+    config_path = args.config
     state_dict_path = args.model
 
-    with open(config) as json_file:
+    with open(config_path, 'r') as json_file:
         config = json.load(json_file)
+    logger.info(f'Loaded config from : {config_path}')
 
-    logger.info(f'Loaded config from : {config}')
-
-    logger.info('Loading eval data from : {}'.format(config['testpath']))
     evaldata = InsectDataset(config['testpath'], config['device'], config['classes'])
     eval_loader = DataLoader(evaldata, batch_size=config['batch_size'], shuffle=False)
+    logger.info('Loaded eval data from : {}'.format(config['testpath']))
 
-    logger.info('Loading trained model from : {}'.format(state_dict_path))
-    model_raw = model_selection(config["modelname"])
+    model = model_selection(config, n_classes=evaldata.n_classes)
     state_dict = load_state_dict(state_dict_path)
-
-    model_raw.load_state_dict(state_dict)
-    model = model_raw.to(config['device'])
-
+    model.load_state_dict(state_dict)
+    model = model.to(config['device'])
+    model.eval()
+    logger.info('Loaded trained model from : {}'.format(state_dict_path))
+    
     accuracy, precision = calculate_metrics(model, eval_loader)
 
     logger.info(f'Accuracy : {accuracy}')
@@ -119,5 +118,5 @@ if __name__ == "__main__":
     with open(resultpath, 'w') as f:
         json.dump({
             'accuracy': accuracy,
-            'precision': precision
+            'precision': precision,
         }, f)

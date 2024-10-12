@@ -4,6 +4,7 @@
 data/
 models/
 plots/
+results/
 log/
 
 # Byte-compiled / optimized / DLL files

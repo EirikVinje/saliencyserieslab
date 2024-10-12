@@ -27,7 +27,7 @@ def save_state_dict(model_state_dict: dict, path: str):
 
 
 def load_state_dict(path: str):
-    return torch.load(path)
+    return torch.load(path, weights_only=True)
 
 
 def clear_gpu_memory():

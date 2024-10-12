@@ -144,4 +144,4 @@ if __name__ == '__main__':
 
     modelsavepath = f'./models/{config["modelname"]}_{timestamp}.pth'
     save_state_dict(modelstate, modelsavepath)
-    logger.info(f'Saved model to {modelsavepath}')
+    logger.info(f'Model saved to : {modelsavepath}')
