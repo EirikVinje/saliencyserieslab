@@ -10,12 +10,12 @@ from cnn_mini import CNNMini
 from resnet import ResNet50
 
 
-def model_selection(config : dict):
+def model_selection(config : dict, n_classes : int):
 
     if config['modelname'] == 'resnet':
-        model = ResNet50(len(config['classes'])).to(config['device'])
+        model = ResNet50(n_classes).to(config['device'])
     elif config['modelname'] == 'cnnmini':
-        model = CNNMini(len(config['classes'])).to(config['device'])
+        model = CNNMini(n_classes).to(config['device'])
     else:
         raise ValueError('Invalid model name')
     
@@ -28,58 +28,6 @@ def save_state_dict(model_state_dict: dict, path: str):
 
 def load_state_dict(path: str):
     return torch.load(path)
-
-
-def calculate_precision(predictions, labels):
-    with torch.no_grad():
-        if predictions.dim() > 1:
-            predictions = predictions.argmax(dim=1)
-        
-        precisions = []
-        for class_id in range(torch.unique(labels).size(0)):
-            true_positives = ((predictions == class_id) & (labels == class_id)).sum().float()
-            predicted_positives = (predictions == class_id).sum().float()
-            
-            precision = true_positives / predicted_positives if predicted_positives > 0 else torch.tensor(0.0)
-            precisions.append(precision)
-        
-        macro_precision = torch.tensor(precisions).mean()
-    
-    return macro_precision
-
-
-def calculate_accuracy(predictions, labels):
-
-    correct = (predictions == labels).sum().item()
-    total = labels.size(0)
-    accuracy = correct / total
-
-    return accuracy
-
-
-def evaluate(model: nn.Module, loader: DataLoader):
-    
-    all_preds = []
-    all_labels = []
-
-    model.eval()
-
-    with torch.no_grad():
-        for data, ytrue in loader:
-                
-            output = model(data)
-            ypred = torch.argmax(output, dim=-1)
-            
-            all_preds.append(ypred)
-            all_labels.append(ytrue)
-
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-    
-    accuracy = calculate_accuracy(all_preds, all_labels)
-    precision = calculate_precision(all_preds, all_labels)
-    
-    return accuracy, precision
 
 
 def clear_gpu_memory():
@@ -102,7 +50,7 @@ def plot_results(accuracy_log, precision_log, loss_log, timestamp : str):
     plt.plot(precision_log, label='Precision')
     plt.plot(loss_log, label='Loss')
     plt.legend()
-    plt.savefig(f'./log/results_{timestamp}.png')
+    plt.savefig(f'./plots/plot_results_{timestamp}.png')
 
 
 def smooth_data(data, window_size):

@@ -1,6 +1,7 @@
 import datetime
 import argparse
 import logging
+import json
 import sys
 import os
 
@@ -15,16 +16,14 @@ from modelutils import clear_gpu_memory
 from modelutils import save_state_dict
 from modelutils import model_selection
 from modelutils import plot_results
-from modelutils import evaluate
+from evaluate import calculate_metrics
 
+# set torch seeds for reproducibility
+torch.manual_seed(42)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
-logger = logging.getLogger('InsectSound')
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
+logger = logging.getLogger('src')
 
 def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp : str, log: bool = True):
 
@@ -59,13 +58,12 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
             for batch_idx, (data, ytrue) in enumerate(train_loader):
                 
                 optimizer.zero_grad()
+                
                 output = model(data)
 
                 loss = criterion(output, ytrue)
-
                 loss.backward()
                 
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
 
                 pbar.update(1)
@@ -74,7 +72,7 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
 
             if log:
 
-                accuracy, precision = evaluate(model, train_loader)
+                accuracy, precision = calculate_metrics(model, train_loader)
                 model.train()
 
                 pbar.set_description(f'epoch {i+1}:{epochs} | loss: {loss:.4f} | acc: {accuracy:.4f} | prec: {precision:.4f}')
@@ -100,6 +98,11 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
 if __name__ == '__main__':
 
     logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler()
+    
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     logger.info(f'Timestamp: {timestamp}')
@@ -112,58 +115,33 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--model', type=str, default='cnnmini')
+    parser.add_argument('--config', type=str, default='./modelconfig.json', help='Path to config file')
+
     args = parser.parse_args()
 
-    config = {
-        'device': args.device,
-        'epochs': args.epochs,
-        'lr': args.lr,
-        'batch_size': args.batch_size,
-        'modelname': args.model,
-        'classes': ["all"],
-        'trainpath' : './data/InsectSound_TRAIN.arff',
-        'testpath' : './data/InsectSound_TEST.arff'
-    }
+    with open(args.config) as json_file:
+        config = json.load(json_file)
 
-    config["classes"] = ['Aedes_female',
-                        'Aedes_male',
-                        'Fruit_flies',
-                        'House_flies',]
+    # config["classes"] = ['Aedes_female', 'Aedes_male']
 
     logger.info(f'Loading train from : {config["trainpath"]}')
     traindata = InsectDataset(config['trainpath'], config['device'], config['classes'])
     train_loader = DataLoader(traindata, batch_size=config['batch_size'], shuffle=True)
 
-    model = model_selection(config)
+    model = model_selection(config, traindata.n_classes)
+
+    model = model.to(config['device'])
 
     logger.info(f"Using model: {config['modelname']}")
 
     modelstate, accuracy_log, precision_log, loss_log = train(train_loader, model, config, timestamp)
     
-    assert False
+    plot_results(accuracy_log, precision_log, loss_log, timestamp)
 
+    # assert False
     #! TODO : save model and load model to explain.py
     #! TODO : Finish LIME
 
     modelsavepath = f'./models/{config["modelname"]}_{timestamp}.pth'
-    
     save_state_dict(modelstate, modelsavepath)
     logger.info(f'Saved model to {modelsavepath}')
-
-    logger.info('Evaluating model on test set...')
-    logger.info(f'Loading test from : {config["testpath"]}')
-    
-    evaldata = InsectDataset(config['testpath'], config['device'], config['classes'])
-    eval_loader = DataLoader(evaldata, batch_size=config['batch_size'], shuffle=False)
-
-    accuracy, precision = evaluate(model, eval_loader)
-
-    logger.info(f'Validation accuracy: {accuracy:.4f}')
-    logger.info(f'Validation precision: {precision:.4f}')
-
-    plot_results(accuracy_log, precision_log, loss_log, timestamp)

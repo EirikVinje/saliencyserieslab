@@ -34,19 +34,29 @@ class InsectDataset(torch.utils.data.Dataset):
 
         data = [list(d) for d in data[0]]
 
-        data = np.array(data, dtype=object)
+        data_x = [d[:-1] for d in data]
+        data_x = np.array(data_x, dtype=np.float32)
 
-        data_x = data[:, :-1]
-        data_y = data[:, -1]
-
-        bytes_to_str = np.vectorize(lambda x: x.decode('utf-8'))
-        data_y = bytes_to_str(data_y)
-
+        data_y = [d[-1] for d in data]
+        data_y = list(map(lambda x: x.decode('utf-8'), data_y))
+        data_y = np.array(data_y, dtype=str)
+        
         if classes == ["all"]:
+            
+            unique = np.unique(data_y)
+            self.labels_to_num = {str(c):i for i, c in enumerate(unique)}
+            self.num_to_labels = {i:str(c) for i, c in enumerate(unique)}
+        
+            data_y = [self.labels_to_num[c] for c in data_y]
+            data_y = np.array(data_y, dtype=np.int64)
+            
             self.x = torch.tensor(data_x, dtype=torch.float32)
             self.y = torch.tensor(data_y, dtype=torch.long)
-        
+
+            self.n_classes = unique.shape[0]
+
         else:
+
             empty_x = np.zeros((2500*len(classes), 600), dtype=np.float32)
             empty_y = np.zeros(2500*len(classes), dtype=np.int64)
 
@@ -60,10 +70,14 @@ class InsectDataset(torch.utils.data.Dataset):
                 empty_x[i*2500:(i+1)*2500, :] = data_x[is_class, :]
                 empty_y[i*2500:(i+1)*2500] = np.repeat(i, 2500)
 
-        self.x = torch.tensor(empty_x, dtype=torch.float32)
-        self.y = torch.tensor(empty_y, dtype=torch.long)
+            self.x = torch.tensor(empty_x, dtype=torch.float32)
+            self.y = torch.tensor(empty_y, dtype=torch.long)
 
-        self.classes = [i for i in range(len(classes))]
+            self.num_to_labels = {i:c for i, c in enumerate(classes)}
+            self.labels_to_num = {c:i for i, c in enumerate(classes)}
+
+            self.n_classes = len(classes)
+
 
     @staticmethod
     def get_class_names():
