@@ -50,7 +50,7 @@ def plot_results(accuracy_log, precision_log, loss_log, timestamp : str):
     plt.plot(precision_log, label='Precision')
     plt.plot(loss_log, label='Loss')
     plt.legend()
-    plt.savefig(f'./plots/plot_results_{timestamp}.png')
+    plt.savefig(f'./plots/training_{timestamp}.png')
 
 
 def smooth_data(data, window_size):

@@ -84,7 +84,7 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='./modelconfig.json', help='Path to config file')
+    parser.add_argument('--config', type=str, default='./modelconfigs/modelconfig.json', help='Path to config file')
     parser.add_argument('--model', type=str, required=True, help='Path to model file, e.g ./models/resnet_20221017_092600.pth')
     args = parser.parse_args()
 

@@ -15,6 +15,7 @@ import torch
 from localdatasets import InsectDataset
 from modelutils import load_state_dict
 from modelutils import model_selection
+from explain import plot_weighted_graph
 
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True
@@ -128,14 +129,13 @@ def perturb_data(x : np.ndarray,
     return np.array(perturbed_samples), np.array(binary_representations)
 
 
-
 def lime_explainer(model : nn.Module,
                    config : dict,
                    data : List=[torch.tensor, torch.tensor],
-                   perturbation_ratio : float=0.5, 
-                   adjacency_prob : float=0.7,
+                   perturbation_ratio : float=0.4, 
+                   adjacency_prob : float=0.9,
                    num_samples : int=5000, 
-                   segment_size : int=6,
+                   segment_size : int=1,
                    sigma : float=0.1):
 
     x, y = data
@@ -161,19 +161,14 @@ def lime_explainer(model : nn.Module,
         predictions = predictions.cpu().numpy()
 
     logreg = LogisticRegression(solver='lbfgs')
-
     logreg.fit(binary_rep, predictions, sample_weight=weights)
 
-    # get logreg weights
-    w = logreg.coef_[0]
-
-    # softmax the weights
-    w = sorted(softmax(w), reverse=True)
-
+    w = logreg.coef_[0].reshape(-1)
+    w = np.interp(w, (w.min(), w.max()), (0, 1))
+    w = np.repeat(w, x.shape[0] // w.shape[0])
     
-
-    print(w)
-
+    logger.info("Plot saved to ./plots")
+    plot_weighted_graph(x, w)
 
 
 if __name__ == '__main__':
@@ -188,7 +183,7 @@ if __name__ == '__main__':
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='./modelconfig.json', help='Path to config file')
+    parser.add_argument('--config', type=str, default='./modelconfigs/modelconfig.json', help='Path to config file')
     parser.add_argument('--model', type=str, default="./models/resnet_20241012_143542.pth", help='Path to model file, e.g ./models/resnet_20221017_092600.pth')
     args = parser.parse_args()
 

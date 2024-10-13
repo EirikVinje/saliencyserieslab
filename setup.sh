@@ -6,19 +6,6 @@ if [ "$(basename "$PWD")" != "saliencyserieslab" ]; then
     exit 1
 fi
 
-DATA_PATH="$(pwd)/data/insectsound"
-if [ ! -d "$DATA_PATH" ]; then
-    cd data
-    echo "Downloading the InsectSound dataset..."
-    wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
-    unzip InsectSound.zip
-    mkdir -p data/insectsound
-    mv InsectSound/* data/insectsound
-    rm -rf InsectSound.zip
-    rm -rf InsectSound
-    cd ..
-fi
-
 LOG_PATH="$(pwd)/log"
 if [ ! -d "$LOG_PATH" ]; then
     echo "Setting up environment..."
@@ -29,4 +16,28 @@ if [ ! -d "$LOG_PATH" ]; then
     mkdir log
 fi
 
+DATA_PATH="$(pwd)/data/insectsound"
+if [ ! -d "$DATA_PATH" ]; then
+    echo "Downloading the InsectSound dataset..."
+    cd data
+    wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
+    unzip InsectSound.zip
+    mkdir insectsound
+    mv InsectSound/* insectsound/
+    rm -rf InsectSound.zip
+    rm -rf InsectSound
+    cd ..
+fi
+
+DATA_PATH="$(pwd)/data/ecg"
+if [ ! -d "$DATA_PATH" ]; then
+    echo "Downloading the ECG dataset..."
+    cd data
+    mkdir -p ecg
+    cd ..
+fi
+
 pip install -r requirements.txt
+
+
+

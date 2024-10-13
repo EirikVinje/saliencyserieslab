@@ -60,7 +60,7 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
                 optimizer.zero_grad()
                 
                 output = model(data)
-
+                
                 loss = criterion(output, ytrue)
                 loss.backward()
                 
@@ -71,19 +71,14 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
             lr_scheduler.step()
 
             if log:
-
                 accuracy, precision = calculate_metrics(model, train_loader)
                 model.train()
 
                 pbar.set_description(f'epoch {i+1}:{epochs} | loss: {loss:.4f} | acc: {accuracy:.4f} | prec: {precision:.4f}')
 
-                accuracy = float(accuracy)
-                precision = float(precision)
-                loss = float(loss)
-                
-                accuracy_log.append(accuracy)
-                precision_log.append(precision)
-                loss_log.append(loss)
+                accuracy_log.append(float(accuracy))
+                precision_log.append(float(precision))
+                loss_log.append(float(loss))
             
             else:
                 pbar.set_description(f'epoch {i+1}:{epochs} | loss: {loss:.4f} | acc: - | prec: -')
@@ -96,6 +91,9 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
 
 
 if __name__ == '__main__':
+
+    if not os.path.isfile('./setup.sh'):
+        raise RuntimeError('Please run this script in the root directory of the repository')
 
     logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler()
@@ -110,19 +108,16 @@ if __name__ == '__main__':
     clear_gpu_memory()
     logger.info('Cleared GPU memory')
 
-    if not os.path.isfile('./README.md'):
-        raise RuntimeError('Please run this script in the root directory of the repository')
-
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--config', type=str, default='./modelconfig.json', help='Path to config file')
-
+    parser.add_argument('--config', type=str, default='./modelconfigs/modelconfig.json', help='Path to config file')
+    parser.add_argument('--log', type=argparse.BooleanOptionalAction, default=False, help='Whether to log results')
     args = parser.parse_args()
+
+    do_log = args.log
 
     with open(args.config) as json_file:
         config = json.load(json_file)
-
-    # config["classes"] = ['Aedes_female', 'Aedes_male']
 
     logger.info(f'Loading train from : {config["trainpath"]}')
     traindata = InsectDataset(config['trainpath'], config['device'], config['classes'])
@@ -135,12 +130,8 @@ if __name__ == '__main__':
     logger.info(f"Using model: {config['modelname']}")
 
     modelstate, accuracy_log, precision_log, loss_log = train(train_loader, model, config, timestamp)
-    
     plot_results(accuracy_log, precision_log, loss_log, timestamp)
-
-    # assert False
-    #! TODO : save model and load model to explain.py
-    #! TODO : Finish LIME
+    
 
     modelsavepath = f'./models/{config["modelname"]}_{timestamp}.pth'
     save_state_dict(modelstate, modelsavepath)

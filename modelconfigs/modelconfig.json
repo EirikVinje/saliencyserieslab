@@ -1,10 +1,10 @@
 {
     "device": "cuda",
     "epochs": 15,
-    "lr": 0.001,
-    "batch_size": 64,
+    "lr": 0.01,
+    "batch_size": 128,
     "modelname": "resnet",
     "classes": ["all"],
-    "trainpath": "./data/InsectSound_TRAIN.arff",
-    "testpath": "./data/InsectSound_TEST.arff"
+    "trainpath": "./data/insectsound/InsectSound_TRAIN.arff",
+    "testpath": "./data/insectsound/InsectSound_TEST.arff"
 }
