@@ -19,22 +19,25 @@ fi
 DATA_PATH="$(pwd)/data/insectsound"
 if [ ! -d "$DATA_PATH" ]; then
     echo "Downloading the InsectSound dataset..."
-    cd data
-    wget https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
-    unzip InsectSound.zip
-    mkdir insectsound
-    mv InsectSound/* insectsound/
-    rm -rf InsectSound.zip
-    rm -rf InsectSound
-    cd ..
+    wget -P data https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
+    unzip data/InsectSound.zip
+    rm -rf data/InsectSound.zip
+    mkdir data/insectsound
+    mv data/InsectSound/* data/insectsound/
+    rm -rf data/InsectSound
 fi
 
 DATA_PATH="$(pwd)/data/ecg"
 if [ ! -d "$DATA_PATH" ]; then
     echo "Downloading the ECG dataset..."
-    cd data
-    mkdir -p ecg
+    mkdir data/ecg
     cd ..
+fi
+
+PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
+if [ ! -f "$PKL_PATH" ]; then
+    python utils/format_insectsound.py
+    rm -rf data/insectsound/*.arff
 fi
 
 pip install -r requirements.txt

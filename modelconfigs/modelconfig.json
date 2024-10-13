@@ -5,6 +5,6 @@
     "batch_size": 128,
     "modelname": "resnet",
     "classes": ["all"],
-    "trainpath": "./data/insectsound/InsectSound_TRAIN.arff",
-    "testpath": "./data/insectsound/InsectSound_TEST.arff"
+    "trainpath": "./data/insectsound/insectsound_train.pkl",
+    "testpath": "./data/insectsound/insectsound_test.pkl"
 }

@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     do_log = args.log
 
-    with open(args.config) as json_file:
+    with open(args.config, 'r') as json_file:
         config = json.load(json_file)
 
     logger.info(f'Loading train from : {config["trainpath"]}')
