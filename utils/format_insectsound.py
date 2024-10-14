@@ -5,7 +5,6 @@ import os
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from scipy.io.arff import loadarff
-import torch
 
 
 def format_dataset(inpath : str, outpath : str):
