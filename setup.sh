@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 if ! command -v unzip >/dev/null 2>&1; then
-    echo "unzip is not installed."
+    echo "unzip is not installed. You can install it by running 'sudo apt install unzip'."
     exit 1
 fi
 
@@ -26,7 +26,7 @@ if [ ! -d "$DATA_PATH" ]; then
     rm -rf data/InsectSound.zip
     echo "Downloading the InsectSound dataset..."
     wget -P data https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
-    tar -xvf data/InsectSound.zip
+    unzip -d data data/InsectSound.zip
     rm -rf data/InsectSound.zip
     mkdir data/insectsound
     mv data/InsectSound/* data/insectsound/
