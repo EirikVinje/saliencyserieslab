@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+if ! python -c "import aeon" &>/dev/null; then
+    echo "The 'aeon' package is not installed"
+fi
+
 if ! command -v unzip >/dev/null 2>&1; then
     echo "unzip is not installed. You can install it by running 'sudo apt install unzip'."
     exit 1
@@ -42,7 +46,8 @@ fi
 
 PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
 if [ ! -f "$PKL_PATH" ]; then
-    python utils/format_insectsound.py
+    echo "Formatting the InsectSound dataset..."
+    python ./utils/format_insectsound.py
     rm -rf data/insectsound/*.arff
 fi
 
