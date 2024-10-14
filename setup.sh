@@ -41,13 +41,12 @@ DATA_PATH="$(pwd)/data/ecg"
 if [ ! -d "$DATA_PATH" ]; then
     echo "Downloading the ECG dataset..."
     mkdir data/ecg
-    cd ..
 fi
 
 PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
 if [ ! -f "$PKL_PATH" ]; then
     echo "Formatting the InsectSound dataset..."
-    python ./utils/format_insectsound.py
+    python utils/format_insectsound.py
     rm -rf data/insectsound/*.arff
 fi
 
