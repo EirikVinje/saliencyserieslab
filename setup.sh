@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "unzip is not installed."
+    exit 1
+fi
+
 if [ "$(basename "$PWD")" != "saliencyserieslab" ]; then
     echo "Error: You are not in the project root directory (saliencyserieslab)."
     echo "Please navigate to the correct directory and run this script again."
@@ -18,9 +23,10 @@ fi
 
 DATA_PATH="$(pwd)/data/insectsound"
 if [ ! -d "$DATA_PATH" ]; then
+    rm -rf data/InsectSound.zip
     echo "Downloading the InsectSound dataset..."
     wget -P data https://www.timeseriesclassification.com/aeon-toolkit/InsectSound.zip
-    unzip data/InsectSound.zip
+    tar -xvf data/InsectSound.zip
     rm -rf data/InsectSound.zip
     mkdir data/insectsound
     mv data/InsectSound/* data/insectsound/
@@ -40,7 +46,7 @@ if [ ! -f "$PKL_PATH" ]; then
     rm -rf data/insectsound/*.arff
 fi
 
-pip install -r requirements.txt
+# pip install -r requirements.txt
 
 
 
