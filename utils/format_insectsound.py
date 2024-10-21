@@ -2,12 +2,16 @@ from typing import List
 import pickle
 import os
 
-from sklearn.preprocessing import StandardScaler
-import numpy as np
+from sklearn.model_selection import train_test_split
 from scipy.io.arff import loadarff
+import numpy as np
 
 
-def format_dataset(inpath : str, outpath : str):
+def format_dataset(inpath : str, 
+                   train_outpath : str, 
+                   test_outpath : str, 
+                   n_classes : int = 4, 
+                   test_size : float = 0.2):
 
     class_names = [
                 'Aedes_female',
@@ -22,6 +26,8 @@ def format_dataset(inpath : str, outpath : str):
                 'Tarsalis_male'
                 ]
     
+    class_names = class_names[:n_classes]
+    
     rawdata = loadarff(open(inpath, 'r'))
     rawdata = [list(d) for d in rawdata[0]]
 
@@ -29,14 +35,28 @@ def format_dataset(inpath : str, outpath : str):
     data_x = np.array(data_x, dtype=np.float32)
 
     data_y = [d[-1] for d in rawdata]
-    data_y = list(map(lambda x: x.decode('utf-8'), data_y))
-    data_y = np.array([class_names.index(y) for y in data_y])
+    data_y = np.array(list((map(lambda x: x.decode('utf-8'), data_y))))
+    
+    x_formated = []
+    y_formated = []
 
-    data = {"x": data_x, "y": data_y, "labels": class_names}
+    for i, cn in enumerate(class_names):
+        is_class = np.where(data_y == cn)
+        x_formated.append(data_x[is_class])
+        y_formated.append(np.full(data_x[is_class].shape[0], i))
     
-    with open(outpath, 'wb') as f:
-        pickle.dump(data, f)
+    x_formated = np.concatenate(x_formated)
+    y_formated = np.concatenate(y_formated)
     
+    train_x, test_x, train_y, test_y = train_test_split(x_formated, y_formated, test_size=test_size, random_state=42)
+
+    print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
+
+    with open(train_outpath, 'wb') as f:
+        pickle.dump({'x': train_x, 'y': train_y, 'labels': class_names}, f)
+
+    with open(test_outpath, 'wb') as f:
+        pickle.dump({'x': test_x, 'y': test_y, 'labels': class_names}, f)
 
 
 if __name__ == "__main__":
@@ -44,11 +64,8 @@ if __name__ == "__main__":
     if not os.path.isfile('./setup.sh'):
         raise RuntimeError('Please run this script in the root directory of the repository')
 
-    in_trainpath = "./data/insectsound/InsectSound_TRAIN.arff"
-    out_trainpath = "./data/insectsound/insectsound_train.pkl"
+    in_path = "./data/insectsound/InsectSound.arff"
+    train_out = "./data/insectsound/InsectSound_train.pkl"
+    test_out = "./data/insectsound/InsectSound_test.pkl"
 
-    in_testpath = "./data/insectsound/InsectSound_TEST.arff"
-    out_testpath = "./data/insectsound/insectsound_test.pkl"
-
-    format_dataset(in_trainpath, out_trainpath)
-    format_dataset(in_testpath, out_testpath)
+    format_dataset(in_path, train_out, test_out)

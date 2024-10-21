@@ -1,9 +1,5 @@
 #!/bin/bash -e
 
-if ! python -c "import aeon" &>/dev/null; then
-    echo "The 'aeon' package is not installed"
-fi
-
 if ! command -v unzip >/dev/null 2>&1; then
     echo "unzip is not installed. You can install it by running 'sudo apt install unzip'."
     exit 1
