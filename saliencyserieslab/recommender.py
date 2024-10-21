@@ -15,6 +15,13 @@ from generate_perturbed_data import PerturbedDataGenerator
 from saliencyserieslab.explain import generate_explanations
 from load_sktime_classifier import SktimeClassifier
 
+# logger = logging.getLogger('saliencyserieslab')
+# logger.setLevel(logging.DEBUG)
+# console_handler = logging.StreamHandler()
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# console_handler.setFormatter(formatter)
+# logger.addHandler(console_handler)
+
 
 def recommender(models : Tuple, explainers : Tuple, test_x : np.ndarray):
 
@@ -37,7 +44,7 @@ def recommender(models : Tuple, explainers : Tuple, test_x : np.ndarray):
 
             for explainer in explainers:
                 
-                logger.info(f"calculating model {model.name} with explainer {explainer.name} with method {method}")
+                # logger.info(f"calculating model {model.name} with explainer {explainer.name} with method {method}")
 
                 W = generate_explanations(model, explainer, test_x)
                 
@@ -69,6 +76,8 @@ def recommender(models : Tuple, explainers : Tuple, test_x : np.ndarray):
 
 def recommender_2(exp_dir : str, test_x : np.ndarray):
     
+    exp_dir = os.path.join("./explanations", exp_dir)
+
     weights_id = os.listdir(exp_dir)
     weights = deepcopy(weights_id)
 
@@ -78,37 +87,41 @@ def recommender_2(exp_dir : str, test_x : np.ndarray):
 
     record_euc = {"local_mean" : {}, "global_mean" : {}}
 
-    for w_path, w_id in zip(weights, weights_id):
-
-        modelname = w_id[0]
-        explainername = w_id[1]
-        run_id = w_id[2]
-
-        modelpath = "./models/{}_{}".format(modelname, run_id)
-
-        model = SktimeClassifier()
-        model.load_pretrained_model(modelpath)
-
-        with open(os.path.join(exp_dir, w_path), 'rb') as f:
-            W = pickle.load(f)
-
-        generator = PerturbedDataGenerator(W, test_x)
-
-        for method in record_euc.keys():
-        
-            accuracy = []
-            k = np.arange(0.0, 1.01, 0.1)
-            for i, ki in enumerate(k):
-                perturbed_x, y = generator.generate(ki, method=method)
-                accuracy.append(model.evaluate(perturbed_x, y))
-
-            eauc = np.trapz(x=k, y=accuracy) 
-
-            if modelname not in record_euc[method]:
-                record_euc[method][modelname] = {}
-
-            record_euc[method][modelname][explainername] = eauc
+    with tqdm(total=len(models) * len(explainers)) as bar:
+    
+        for w_path, w_id in zip(weights, weights_id):
             
+            modelname = w_id[0]
+            explainername = w_id[1]
+            run_id = w_id[2]
+            
+            bar.set_description("calculating eauc for pair : ({}, {})".format(modelname, explainername))
+
+            modelpath = "./models/{}_{}".format(modelname, run_id)
+
+            model = SktimeClassifier()
+            model.load_pretrained_model(modelpath)
+
+            with open(os.path.join(exp_dir, w_path), 'rb') as f:
+                W = pickle.load(f)
+
+            generator = PerturbedDataGenerator(W, test_x)
+
+            for method in record_euc.keys():
+            
+                accuracy = []
+                k = np.arange(0.0, 1.01, 0.1)
+                for i, ki in enumerate(k):
+                    perturbed_x, y = generator.generate(ki, method=method)
+                    accuracy.append(model.evaluate(perturbed_x, y))
+
+                eauc = np.trapz(x=k, y=accuracy) 
+
+                if modelname not in record_euc[method]:
+                    record_euc[method][modelname] = {}
+
+                record_euc[method][modelname][explainername] = eauc
+                
     return record_euc
 
 if __name__ == '__main__':
@@ -118,7 +131,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_test.pkl', help='Path to eval data')
-    parser.add_argument('--expdir', type=str, default='./explanations/exp_1', help='Path to eval data')
+    parser.add_argument('--expdir', type=str, default='exp_1', help='Path to eval data')
     args = parser.parse_args()
 
     testpath = args.testpath
