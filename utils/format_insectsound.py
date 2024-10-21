@@ -1,4 +1,5 @@
 from typing import List
+import argparse 
 import pickle
 import os
 
@@ -10,7 +11,7 @@ import numpy as np
 def format_dataset(inpath : str, 
                    train_outpath : str, 
                    test_outpath : str, 
-                   n_classes : int = 4, 
+                   n_classes : int = 5, 
                    test_size : float = 0.2):
 
     class_names = [
@@ -50,8 +51,6 @@ def format_dataset(inpath : str,
     
     train_x, test_x, train_y, test_y = train_test_split(x_formated, y_formated, test_size=test_size, random_state=42)
 
-    print(train_x.shape, train_y.shape, test_x.shape, test_y.shape)
-
     with open(train_outpath, 'wb') as f:
         pickle.dump({'x': train_x, 'y': train_y, 'labels': class_names}, f)
 
@@ -69,3 +68,7 @@ if __name__ == "__main__":
     test_out = "./data/insectsound/insectsound_test.pkl"
 
     format_dataset(in_path, train_out, test_out)
+
+
+
+

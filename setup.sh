@@ -43,7 +43,7 @@ PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
 if [ ! -f "$PKL_PATH" ]; then
     echo "Formatting the InsectSound dataset..."
     python utils/format_insectsound.py
-    rm -rf data/insectsound/*.arff
+    # rm -rf data/insectsound/*.arff
 fi
 
 # pip install -r requirements.txt
