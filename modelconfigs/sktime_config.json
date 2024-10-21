@@ -1,4 +1,0 @@
-{
-    "trainpath": "./data/insectsound/insectsound_train.pkl",
-    "testpath": "./data/insectsound/insectsound_test.pkl"
-}

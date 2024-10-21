@@ -7,13 +7,11 @@ import numpy as np
 import shap
 # from timeshap.explainer import local_report
 
-
-from windowshap import SlidingWindowSHAP, StationaryWindowSHAP, DynamicWindowSHAP
-from load_trained_sktime_classifier import SktimeClassifier
+from saliencyserieslab.load_sktime_classifier import SktimeClassifier
 from plot import plot_weighted_graph
 
 
-class ShapRegularExplainer:
+class RegularShapExplainer:
 
     def __init__(self, model_fn : Callable, x : np.ndarray):
         self.explainer = shap.Explainer(model_fn, x)
@@ -40,9 +38,9 @@ class KernelShapExplainer:
 
     def explain(self, x : np.ndarray):
 
-        w = self.explainer.shap_values(x, gc_collect=True, silent=True)
+        w = self.explainer.shap_values(x, gc_collect=True, silent=True).reshape(-1)
         w = np.interp(w, (w.min(), w.max()), (0, 1))
-        return w    
+        return w 
 
 
 if __name__ == "__main__":

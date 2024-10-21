@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 
-def plot_weighted_graph(x : np.ndarray, w : np.ndarray, exp_method : str):
+def plot_weighted_graph(x : np.ndarray, w : np.ndarray, save_path : str):
 
     assert len(x.shape) == 1, "x must be a 1D numpy array"
     assert len(w.shape) == 1, "w must be a 1D numpy array"
@@ -52,5 +52,5 @@ def plot_weighted_graph(x : np.ndarray, w : np.ndarray, exp_method : str):
     
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    plt.savefig(f"./plots/{exp_method}_explain_{timestamp}.png")
+    plt.savefig(save_path)
 

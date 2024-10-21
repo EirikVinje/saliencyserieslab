@@ -65,7 +65,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--nc', type=int, default=10, help='number of classes to include in the dataset, defualt and max is 10')
-    parser.add_argument('--ts', type=float, default=0.2, help='size of the testset, default is 0.2')
+    parser.add_argument('--testsize', type=float, default=0.1, help='size of the testset, default is 0.2')
+    parser.add_argument('--trainsize', type=float, default=0.4, help='size of the testset, default is 0.2')
     args = parser.parse_args()
 
     n_classes = args.nc

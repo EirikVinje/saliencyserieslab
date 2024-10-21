@@ -1,0 +1,6 @@
+{
+    "num_kernels": 1000,
+    "use_multivariate": "no",
+    "rocket_transform" : "rocket",
+    "random_state": 42
+}   
