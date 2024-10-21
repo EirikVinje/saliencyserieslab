@@ -65,7 +65,7 @@ if __name__ == "__main__":
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     in_path = "./data/insectsound/InsectSound.arff"
-    train_out = "./data/insectsound/InsectSound_train.pkl"
-    test_out = "./data/insectsound/InsectSound_test.pkl"
+    train_out = "./data/insectsound/insectsound_train.pkl"
+    test_out = "./data/insectsound/insectsound_test.pkl"
 
     format_dataset(in_path, train_out, test_out)
