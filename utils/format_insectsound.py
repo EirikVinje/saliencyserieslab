@@ -63,11 +63,19 @@ if __name__ == "__main__":
     if not os.path.isfile('./setup.sh'):
         raise RuntimeError('Please run this script in the root directory of the repository')
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--nc', type=int, default=10, help='number of classes to include in the dataset, defualt and max is 10')
+    parser.add_argument('--ts', type=float, default=0.2, help='size of the testset, default is 0.2')
+    args = parser.parse_args()
+
+    n_classes = args.nc
+    test_size = args.ts
+    
     in_path = "./data/insectsound/InsectSound.arff"
     train_out = "./data/insectsound/insectsound_train.pkl"
     test_out = "./data/insectsound/insectsound_test.pkl"
 
-    format_dataset(in_path, train_out, test_out)
+    format_dataset(in_path, train_out, test_out, n_classes, test_size)
 
 
 

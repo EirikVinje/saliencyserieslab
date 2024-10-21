@@ -12,13 +12,15 @@ from sklearn.metrics import accuracy_score, classification_report
 from sktime.classification.shapelet_based import ShapeletTransformClassifier
 
 from sktime.classification.deep_learning import InceptionTimeClassifier
+from sktime.classification.feature_based import TSFreshClassifier
 from sktime.classification.deep_learning import ResNetClassifier
+from sktime.classification.deep_learning import TapNetClassifier
 from sktime.classification.kernel_based import RocketClassifier
 from sktime.classification.dictionary_based import WEASEL
 
 from sktime.utils import mlflow_sktime
 
-logger = logging.getLogger('src')
+logger = logging.getLogger('saliencyserieslab')
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -27,10 +29,14 @@ def train(model, traindata, evaldata):
     logger.info("Running {}".format(model.__class__.__name__))
 
     train_x, train_y, labels = traindata['x'], traindata['y'], traindata['labels']
+
+    logger.info(f"train size : {train_x.shape}")
     
     model.fit(train_x, train_y)
 
     eval_x, eval_y = evaldata['x'], evaldata['y']
+
+    logger.info(f"test size : {eval_x.shape}")
 
     predictions = model.predict(eval_x)
     accuracy = accuracy_score(eval_y, predictions)
@@ -40,7 +46,7 @@ def train(model, traindata, evaldata):
     
     report = classification_report(eval_y, predictions, target_names=labels, output_dict=True)
 
-    for label, item in list(report.items())[:10]:
+    for label, item in list(report.items())[:len(labels)]:
         print(f'{label} : precision : {item["precision"]}')
     print()
 
@@ -57,8 +63,8 @@ if __name__ == '__main__':
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='./modelconfigs/modelconfig.json', help='Path to config file')
-    parser.add_argument('--model', type=str, default="inceptiontime", help='aeon model')
+    parser.add_argument('--config', type=str, default='./modelconfigs/sktime_config.json', help='Path to config file')
+    parser.add_argument('--model', type=str, default="inceptiontime", help='sktime model [inception, rocket, resnet]')
     args = parser.parse_args()
 
     config_path = args.config
@@ -90,11 +96,13 @@ if __name__ == '__main__':
     # model_args["resnet"] = {"n_epochs" : 30, "verbose" : True, "batch_size" : 64}
 
     models = {
-    "rocket" : RocketClassifier(num_kernels=5000, use_multivariate="no", n_jobs=multiprocessing.cpu_count()-2),
-    "inceptiontime" : InceptionTimeClassifier(n_epochs=30, verbose=True, batch_size=64),
-    "resnet" : ResNetClassifier(n_epochs=30, verbose=True, batch_size=64),
+    "rocket" : RocketClassifier(num_kernels=1000, use_multivariate="no", n_jobs=multiprocessing.cpu_count()-2),
+    "inception" : InceptionTimeClassifier(n_epochs=30, verbose=True, batch_size=128, kernel_size=16),
+    "resnet" : ResNetClassifier(n_epochs=30, verbose=True, batch_size=128),
     }
 
     model = models[model_name]
 
     train(model, traindata, evaldata)
+
+
