@@ -1,33 +1,40 @@
+import multiprocessing
 import argparse
+import datetime
 import logging
 import pickle
+import zipfile
 import json
 import os
 
 from sklearn.metrics import accuracy_score, classification_report
 
-from aeon.classification.convolution_based import RocketClassifier
-from aeon.classification.deep_learning import ResNetClassifier
+from sktime.classification.shapelet_based import ShapeletTransformClassifier
+
+from sktime.classification.deep_learning import InceptionTimeClassifier
+from sktime.classification.deep_learning import ResNetClassifier
+from sktime.classification.kernel_based import RocketClassifier
+from sktime.classification.dictionary_based import WEASEL
+
+from sktime.utils import mlflow_sktime
 
 logger = logging.getLogger('src')
 
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-def resnet(traindata, evaldata):
+def train(model, traindata, evaldata):
 
-    model = ResNetClassifier(verbose=True, n_epochs=25, batch_size=128, random_state=42)
     logger.info("Running {}".format(model.__class__.__name__))
 
     train_x, train_y, labels = traindata['x'], traindata['y'], traindata['labels']
     
-    model.n_classes_ = labels
-
     model.fit(train_x, train_y)
 
     eval_x, eval_y = evaldata['x'], evaldata['y']
 
     predictions = model.predict(eval_x)
-
     accuracy = accuracy_score(eval_y, predictions)
+    print()
     print(f'Accuracy: {accuracy}')
     print()
     
@@ -35,30 +42,13 @@ def resnet(traindata, evaldata):
 
     for label, item in list(report.items())[:10]:
         print(f'{label} : precision : {item["precision"]}')
-
-def rocket(traindata, evaldata):
-
-    model = RocketClassifier()
-    logger.info("Running {}".format(model.__class__.__name__))
-
-    train_x, train_y, labels = traindata['x'], traindata['y'], traindata['labels']
-    
-    model.n_classes_ = labels
-
-    model.fit(train_x, train_y)
-
-    eval_x, eval_y = evaldata['x'], evaldata['y']
-
-    predictions = model.predict(eval_x)
-
-    accuracy = accuracy_score(eval_y, predictions)
-    print(f'Accuracy: {accuracy}')
-    print()
     print()
 
-    report = classification_report(eval_y, predictions, target_names=labels, output_dict=True)
+    model_name = model.__class__.__name__
+    model_save_path = f'./models/{model_name}_{TIMESTAMP}' 
 
-    print(report)
+    mlflow_sktime.save_model(model, model_save_path)
+    logger.info(f'Saved model to : {model_save_path}')    
 
 
 if __name__ == '__main__':
@@ -68,8 +58,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='./modelconfigs/modelconfig.json', help='Path to config file')
+    parser.add_argument('--model', type=str, default="inceptiontime", help='aeon model')
     args = parser.parse_args()
+
     config_path = args.config
+    model_name = args.model
 
     logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler()
@@ -91,5 +84,17 @@ if __name__ == '__main__':
         evaldata = pickle.load(f)
     logger.info(f'Loaded eval data from {config["testpath"]}')
 
-    # rocket(traindata, evaldata)
-    resnet(traindata, evaldata)
+    # model_args = {}
+    # model_args["rocket"] = {"num_kernels" : 5000}
+    # model_args["inceptiontime"] = {"n_epochs" : 30, "verbose" : True, "batch_size" : 64}
+    # model_args["resnet"] = {"n_epochs" : 30, "verbose" : True, "batch_size" : 64}
+
+    models = {
+    "rocket" : RocketClassifier(num_kernels=5000, use_multivariate="no", n_jobs=multiprocessing.cpu_count()-2),
+    "inceptiontime" : InceptionTimeClassifier(n_epochs=30, verbose=True, batch_size=64),
+    "resnet" : ResNetClassifier(n_epochs=30, verbose=True, batch_size=64),
+    }
+
+    model = models[model_name]
+
+    train(model, traindata, evaldata)

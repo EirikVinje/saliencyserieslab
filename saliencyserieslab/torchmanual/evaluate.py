@@ -10,9 +10,9 @@ import torch.nn as nn
 import numpy as np
 import torch
 
-from localdatasets import InsectDataset
-from modelutils import load_state_dict
-from modelutils import model_selection
+from saliencyserieslab.torchmanual.localdatasets import InsectDataset
+from saliencyserieslab.torchmanual.modelutils import load_state_dict
+from saliencyserieslab.torchmanual.modelutils import model_selection
 
 torch.manual_seed(42)
 torch.backends.cudnn.deterministic = True

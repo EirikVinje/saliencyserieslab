@@ -6,8 +6,8 @@ import torch.nn as nn
 import numpy as np
 import torch
 
-from cnn_mini import CNNMini
-from resnet import ResNet50
+from saliencyserieslab.torchmanual.cnn_mini import CNNMini
+from saliencyserieslab.torchmanual.resnet import ResNet50
 
 
 def model_selection(config : dict, n_classes : int):

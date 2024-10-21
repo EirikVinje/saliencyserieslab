@@ -11,12 +11,12 @@ import torch.nn as nn
 import numpy as np
 import torch
 
-from localdatasets import InsectDataset
-from modelutils import clear_gpu_memory
-from modelutils import save_state_dict
-from modelutils import model_selection
-from modelutils import plot_results
-from evaluate import calculate_metrics
+from saliencyserieslab.torchmanual.localdatasets import InsectDataset
+from saliencyserieslab.torchmanual.modelutils import clear_gpu_memory
+from saliencyserieslab.torchmanual.modelutils import save_state_dict
+from saliencyserieslab.torchmanual.modelutils import model_selection
+from saliencyserieslab.torchmanual.modelutils import plot_results
+from saliencyserieslab.torchmanual.evaluate import calculate_metrics
 
 # set torch seeds for reproducibility
 torch.manual_seed(42)
@@ -50,22 +50,16 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
     loss_log = []
 
     with tqdm(total=epochs * len(train_loader)) as pbar:
-        
         pbar.set_description(f'epoch 0:{epochs} | loss: - | acc: - | prec: -')
         
         for i in range(epochs):
-            
             for batch_idx, (data, ytrue) in enumerate(train_loader):
                 
                 optimizer.zero_grad()
-                
                 output = model(data)
-                
                 loss = criterion(output, ytrue)
                 loss.backward()
-                
                 optimizer.step()
-
                 pbar.update(1)
 
             lr_scheduler.step()
@@ -73,9 +67,7 @@ def train(train_loader : DataLoader, model : nn.Module, config : dict, timestamp
             if log:
                 accuracy, precision = calculate_metrics(model, train_loader)
                 model.train()
-
                 pbar.set_description(f'epoch {i+1}:{epochs} | loss: {loss:.4f} | acc: {accuracy:.4f} | prec: {precision:.4f}')
-
                 accuracy_log.append(float(accuracy))
                 precision_log.append(float(precision))
                 loss_log.append(float(loss))
