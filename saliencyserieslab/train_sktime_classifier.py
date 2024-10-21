@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_train.pkl', help='Path to train data')
     parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_test.pkl', help='Path to eval data')
-    parser.add_argument('--model', type=str, default="inceptiontime", help='sktime model [inception, rocket, resnet]')
+    parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet]')
     parser.add_argument('--id', type=str, help='model id')
     args = parser.parse_args()
 
