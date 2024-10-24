@@ -8,11 +8,14 @@ from scipy.io.arff import loadarff
 import numpy as np
 
 
-def format_dataset(inpath : str, 
-                   train_outpath : str, 
-                   test_outpath : str, 
-                   n_classes : int = 5, 
-                   test_size : float = 0.2):
+def format_dataset(
+        inpath : str,
+        train_outpath : str, 
+        test_outpath : str, 
+        train_size : float = 0.8,
+        test_size : float = 0.2,
+        n_classes : int = 10, 
+        ):
 
     class_names = [
                 'Aedes_female',
@@ -46,10 +49,10 @@ def format_dataset(inpath : str,
         x_formated.append(data_x[is_class])
         y_formated.append(np.full(data_x[is_class].shape[0], i))
     
-    x_formated = np.concatenate(x_formated)
+    x_formated = np.vstack(x_formated)
     y_formated = np.concatenate(y_formated)
     
-    train_x, test_x, train_y, test_y = train_test_split(x_formated, y_formated, test_size=test_size, random_state=42)
+    train_x, test_x, train_y, test_y = train_test_split(x_formated, y_formated, test_size=test_size, train_size=train_size, random_state=42)
 
     with open(train_outpath, 'wb') as f:
         pickle.dump({'x': train_x, 'y': train_y, 'labels': class_names}, f)
@@ -64,17 +67,18 @@ if __name__ == "__main__":
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--nc', type=int, default=10, help='number of classes to include in the dataset, defualt and max is 10')
-    parser.add_argument('--testsize', type=float, default=0.1, help='size of the testset, default is 0.2')
+    parser.add_argument('--n_classes', type=int, default=10, help='number of classes to include in the dataset, defualt and max is 10')
     parser.add_argument('--trainsize', type=float, default=0.4, help='size of the testset, default is 0.2')
+    parser.add_argument('--testsize', type=float, default=0.1, help='size of the testset, default is 0.2')
     args = parser.parse_args()
 
-    n_classes = args.nc
-    test_size = args.ts
+    n_classes = args.n_classes
+    train_size = args.trainsize
+    test_size = args.testsize
     
     in_path = "./data/insectsound/InsectSound.arff"
-    train_out = "./data/insectsound/insectsound_train.pkl"
-    test_out = "./data/insectsound/insectsound_test.pkl"
+    train_out = "./data/insectsound/insectsound_train_n{}.pkl".format(n_classes)
+    test_out = "./data/insectsound/insectsound_test_n{}.pkl".format(n_classes)
 
     format_dataset(in_path, train_out, test_out, n_classes, test_size)
 

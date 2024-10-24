@@ -1,0 +1,16 @@
+flavors:
+  mlflow_sktime:
+    code: null
+    pickled_model: model
+    serialization_format: pickle
+    sktime_version: 0.33.1
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: sktime.utils.mlflow_sktime
+    model_path: model
+    python_version: 3.10.0
+mlflow_version: 2.17.0
+model_uuid: ad91d77e17514fdfadf85d89172990eb
+utc_time_created: '2024-10-16 13:47:02.025054'

@@ -36,13 +36,14 @@ class Explainer:
     def load_lime(self, model_fn : Callable, config_path : str = './explainerconfigs/lime_config.json'):
         
         config = self._load_config(config_path)
-        self.explainer = LemonExplainer(model_fn=model_fn, 
-                                        perturbation_ratio=config['perturbation_ratio'],
-                                        adjacency_prob=config['adjacency_prob'],
-                                        num_samples=config['num_samples'],
-                                        segment_size=config['segment_size'],
-                                        sigma=config['sigma']
-                                        )
+        self.explainer = LemonExplainer(
+            model_fn=model_fn,
+            perturbation_ratio=config['perturbation_ratio'],
+            adjacency_prob=config['adjacency_prob'],
+            num_samples=config['num_samples'],
+            segment_size=config['segment_size'],
+            sigma=config['sigma'],
+            )
         
         self.name = self.explainer.__class__.__name__
 
@@ -50,10 +51,12 @@ class Explainer:
     def load_kernelshap(self, model_fn : Callable, background_data : np.ndarray, config_path : str = './explainerconfigs/kernelshap_config.json'):
         
         config = self._load_config(config_path)
-        self.explainer = KernelShapExplainer(model_fn=model_fn, 
-                                      x_background=background_data,
-                                      algorithm_idx=config['algorithm_idx']
-                                      )
+        self.explainer = KernelShapExplainer(
+            model_fn=model_fn,
+            x_background=background_data,
+            algorithm_idx=config['algorithm_idx'],
+            n_background=config['n_background'],
+            )
         
         self.name = self.explainer.__class__.__name__
 
@@ -77,9 +80,9 @@ class TimeShapExplainer:
 
 
 class KernelShapExplainer:
-    def __init__(self, model_fn : Callable, x_background : np.ndarray, algorithm_idx : int=0):
+    def __init__(self, model_fn : Callable, x_background : np.ndarray, algorithm_idx : int=0, n_background : int=50):
 
-        x_background = shap.sample(x_background, 50)
+        x_background = shap.sample(x_background, n_background)
         algorithms = ["auto", "permutation", "partition", "tree", "linear"]
         self.explainer = shap.KernelExplainer(model_fn, x_background, algorithm=algorithms[algorithm_idx])
 

@@ -12,7 +12,7 @@ from tqdm import tqdm
 import numpy as np
 
 from generate_perturbed_data import PerturbedDataGenerator
-from saliencyserieslab.explain import generate_explanations
+from saliencyserieslab.generate_explanations import generate_explanations
 from load_sktime_classifier import SktimeClassifier
 
 # logger = logging.getLogger('saliencyserieslab')
