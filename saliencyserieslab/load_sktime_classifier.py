@@ -16,6 +16,7 @@ class SktimeClassifier:
     def __init__(self):
         self.model = None
         self.name = None
+        self.config = None
 
     def load_pretrained_model(self, model_path : str):
         
@@ -61,6 +62,8 @@ class SktimeClassifier:
     def _load_config(self, config_path : str):
         with open(config_path, 'r') as f:
             config = json.load(f)
+        self.config = config    
+    
         return config
 
 

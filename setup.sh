@@ -15,7 +15,6 @@ LOG_PATH="$(pwd)/log"
 if [ ! -d "$LOG_PATH" ]; then
     echo "Setting up environment..."
     mkdir results
-    mkdir models
     mkdir plots
     mkdir data
     mkdir log
@@ -42,7 +41,8 @@ fi
 PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
 if [ ! -f "$PKL_PATH" ]; then
     echo "Formatting the InsectSound dataset..."
-    python utils/format_insectsound.py
+    python utils/format_insectsound.py --n_classes 5
+    python utils/format_insectsound.py --n_classes 10
     # rm -rf data/insectsound/*.arff
 fi
 

@@ -9,6 +9,7 @@ import os
 
 from sklearn.metrics import accuracy_score, classification_report
 from sktime.utils import mlflow_sktime
+import numpy as np
 
 from load_sktime_classifier import SktimeClassifier
 
@@ -54,8 +55,16 @@ def train(model, traindata, evaldata):
     print()
 
     mlflow_sktime.save_model(model, model_save_path)
-    logger.info(f'Saved model to : {model_save_path}')    
+    logger.info(f'Saved model to : {model_save_path}')
 
+    metaconfig = {
+        "accuracy" : accuracy,
+        "n_classes" : np.unique(train_y).shape[0],
+        "modelconfig" : model.config,
+    }
+
+    with open(f'{model_save_path}/metaconfig.json', 'w') as f:
+        json.dump(metaconfig, f)
 
 if __name__ == '__main__':
     
@@ -63,8 +72,8 @@ if __name__ == '__main__':
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_train.pkl', help='Path to train data')
-    parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_test.pkl', help='Path to eval data')
+    parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_trainn5.pkl', help='Path to train data')
+    parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_testn5.pkl', help='Path to eval data')
     parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet]')
     parser.add_argument('--id', type=str, help='model id')
     args = parser.parse_args()
