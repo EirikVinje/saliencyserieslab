@@ -32,6 +32,8 @@ def format_dataset(
     
     class_names = class_names[:n_classes]
     
+    print("Generating train-test split : ({},{}) with {} classes".format(train_size, test_size, n_classes))
+
     rawdata = loadarff(open(inpath, 'r'))
     rawdata = [list(d) for d in rawdata[0]]
 
@@ -45,10 +47,15 @@ def format_dataset(
     y_formated = []
 
     for i, cn in enumerate(class_names):
-        is_class = np.where(data_y == cn)
-        x_formated.append(data_x[is_class])
-        y_formated.append(np.full(data_x[is_class].shape[0], i))
-    
+        
+        is_class = np.where(data_y == cn)[0]
+        
+        c_x = data_x[is_class, :]
+        c_y = np.full(c_x.shape[0], i)
+        
+        x_formated.append(c_x)
+        y_formated.append(c_y)
+        
     x_formated = np.vstack(x_formated)
     y_formated = np.concatenate(y_formated)
     
@@ -68,8 +75,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_classes', type=int, default=10, help='number of classes to include in the dataset, defualt and max is 10')
-    parser.add_argument('--trainsize', type=float, default=0.4, help='size of the testset, default is 0.2')
-    parser.add_argument('--testsize', type=float, default=0.1, help='size of the testset, default is 0.2')
+    parser.add_argument('--trainsize', type=float, default=0.7, help='size of the testset, default is 0.2')
+    parser.add_argument('--testsize', type=float, default=0.3, help='size of the testset, default is 0.2')
     args = parser.parse_args()
 
     n_classes = args.n_classes
@@ -80,7 +87,7 @@ if __name__ == "__main__":
     train_out = "./data/insectsound/insectsound_train_n{}.pkl".format(n_classes)
     test_out = "./data/insectsound/insectsound_test_n{}.pkl".format(n_classes)
 
-    format_dataset(in_path, train_out, test_out, n_classes, test_size)
+    format_dataset(in_path, train_out, test_out, train_size, test_size, n_classes)
 
 
 
