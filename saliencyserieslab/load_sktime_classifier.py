@@ -13,16 +13,22 @@ from sktime.classification.kernel_based import RocketClassifier
 
 
 class SktimeClassifier:
-    def __init__(self):
+    def __init__(self, config : dict):
+        
+        self.config = config
+        
         self.model = None
         self.name = None
-        self.config = None
 
     def load_pretrained_model(self, model_path : str):
         
         self.model = mlflow_sktime.load_model(model_path)
         self.name = self.model.__class__.__name__
         self.model.verbose = False
+
+
+    def fit(self, x : np.ndarray, y : np.ndarray):
+        self.model.fit(x, y)
 
 
     def load_model(self, model : str):
@@ -57,46 +63,49 @@ class SktimeClassifier:
         if metric == 'accuracy':
             accuracy = accuracy_score(predictions, y)
             return accuracy
+        
 
+    def _load_resnet(self):
 
-    def _load_config(self, config_path : str):
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        self.config = config    
-    
-        return config
-
-
-    def _load_resnet(self, config_path : str = './modelconfigs/resnet_config.json'):
-
-        config = self._load_config(config_path)
-        self.model = ResNetClassifier(n_epochs=config['epochs'], 
-                                      verbose=config['verbose'], 
-                                      batch_size=config['batch_size'],
-                                      random_state=config['random_state'])
+        config = self.config["resnet"]
+        self.model = ResNetClassifier(
+            random_state=config['random_state'],
+            batch_size=config['batch_size'],
+            n_epochs=config['epochs'], 
+            verbose=config['verbose'], 
+            )
         
         self.name = self.model.__class__.__name__
 
 
-    def _load_inception(self, config_path : str = './modelconfigs/inception_config.json'):
+    def _load_inception(self):
 
-        config = self._load_config(config_path)
-        self.model = InceptionTimeClassifier(n_epochs=config['epochs'], 
-                                             verbose=config['verbose'], 
-                                             batch_size=config['batch_size'],
-                                             random_state=config['random_state'])
+        config = self.config["inception"]
+        self.model = InceptionTimeClassifier(
+            bottleneck_size=config['bottleneck_size'],
+            random_state=config['random_state'],
+            kernel_size=config['kernel_size'],
+            batch_size=config['batch_size'],
+            n_filters=config['n_filters'],
+            n_epochs=config['epochs'],
+            verbose=config['verbose'],
+            depth=config['depth'],
+            )
         
         self.name = self.model.__class__.__name__
 
 
+    def _load_rocket(self):
 
-    def _load_rocket(self, config_path : str = './modelconfigs/rocket_config.json'):
-
-        config = self._load_config(config_path)
-        self.model = RocketClassifier(num_kernels=config['num_kernels'],
-                                      rocket_transform=config['rocket_transform'],
-                                      use_multivariate="no", 
-                                      n_jobs=multiprocessing.cpu_count()-2,
-                                      random_state=config['random_state'])
+        config = self.config["rocket"]
+        self.model = RocketClassifier(
+            max_dilations_per_kernel=config['max_dilations_per_kernel'],
+            n_features_per_kernel=config['n_features_per_kernel'],
+            rocket_transform=config['rocket_transform'],
+            n_jobs=multiprocessing.cpu_count()-2,
+            random_state=config['random_state'],
+            num_kernels=config['num_kernels'],
+            use_multivariate="no", 
+            )
         
         self.name = self.model.__class__.__name__

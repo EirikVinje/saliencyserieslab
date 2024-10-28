@@ -3,6 +3,7 @@ import argparse
 import pickle
 import os
 
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from scipy.io.arff import loadarff
 import numpy as np
@@ -58,7 +59,10 @@ def format_dataset(
         
     x_formated = np.vstack(x_formated)
     y_formated = np.concatenate(y_formated)
-    
+
+    scaler = StandardScaler()
+    x_formated = scaler.fit_transform(x_formated, y_formated)
+
     train_x, test_x, train_y, test_y = train_test_split(x_formated, y_formated, test_size=test_size, train_size=train_size, random_state=42)
 
     with open(train_outpath, 'wb') as f:

@@ -13,58 +13,46 @@ import numpy as np
 
 from load_sktime_classifier import SktimeClassifier
 
-logger = logging.getLogger('saliencyserieslab')
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
 
-
-def train(model, traindata, evaldata):
-
-    logger.info("Running {}".format(model.__class__.__name__))
+def train(model, traindata, evaldata, save_model : bool = False):
 
     model_save_path = f'./models/{MODEL_NAME}_{MODEL_ID}'
     
     if os.path.exists(model_save_path):
-        logger.info(f"model already exists at {model_save_path}")
-        logger.info("delete file or change model id")
-        return
+        raise RuntimeError("model already exists at {}".format(model_save_path))
 
     train_x, train_y, labels = traindata['x'], traindata['y'], traindata['labels']
 
-    logger.info(f"train size : {train_x.shape}")
-    
     model.fit(train_x, train_y)
 
     eval_x, eval_y = evaldata['x'], evaldata['y']
 
-    logger.info(f"test size : {eval_x.shape}")
-
     predictions = model.predict(eval_x)
     accuracy = accuracy_score(eval_y, predictions)
-    print()
-    print(f'Accuracy: {accuracy}')
-    print()
     
-    report = classification_report(eval_y, predictions, target_names=labels, output_dict=True)
+    # print()
+    # print(f'Accuracy: {accuracy}')
+    # print()
+    
+    # report = classification_report(eval_y, predictions, target_names=labels, output_dict=True)
 
-    for label, item in list(report.items())[:len(labels)]:
-        print(f'{label} : precision : {item["precision"]}')
-    print()
+    # for label, item in list(report.items())[:len(labels)]:
+    #     print(f'{label} : precision : {item["precision"]}')
+    # print()
 
-    mlflow_sktime.save_model(model, model_save_path)
-    logger.info(f'Saved model to : {model_save_path}')
+    if save_model:
+        mlflow_sktime.save_model(model, model_save_path)
+        
+        metaconfig = {
+            "accuracy" : accuracy,
+            "n_classes" : np.unique(train_y).shape[0],
+            "modelconfig" : model.config,
+        }
 
-    metaconfig = {
-        "accuracy" : accuracy,
-        "n_classes" : np.unique(train_y).shape[0],
-        "modelconfig" : model.config,
-    }
+        with open(f'{model_save_path}/metaconfig.json', 'w') as f:
+            json.dump(metaconfig, f)
 
-    with open(f'{model_save_path}/metaconfig.json', 'w') as f:
-        json.dump(metaconfig, f)
+    return accuracy
 
 if __name__ == '__main__':
     
@@ -83,15 +71,11 @@ if __name__ == '__main__':
     MODEL_NAME = args.model
     MODEL_ID = args.id
 
-    logger.info("Running {}".format(__file__))
-
     with open(trainpath, 'rb') as f:
         traindata = pickle.load(f)
-    logger.info(f'Loaded train data from {trainpath}')
 
     with open(testpath, 'rb') as f:
         evaldata = pickle.load(f)
-    logger.info(f'Loaded eval data from {testpath}')
 
     model = SktimeClassifier()
     model.load_model(MODEL_NAME)
