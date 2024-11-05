@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 
-from plot import plot_weighted_graph
+from saliencyserieslab.plotting import plot_weighted_graph
 
 class PerturbedDataGenerator:
     def __init__(self, explanations : np.ndarray, X : np.ndarray):

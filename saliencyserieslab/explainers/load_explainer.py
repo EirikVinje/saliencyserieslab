@@ -101,7 +101,8 @@ class LemonExplainer:
                  adjacency_prob : float=0.9, 
                  num_samples : int=5000, 
                  segment_size : int=1, 
-                 sigma : float=0.1):
+                 sigma : float=0.1
+                 ):
     
         self.perturbation_ratio = perturbation_ratio
         self.adjacency_prob = adjacency_prob

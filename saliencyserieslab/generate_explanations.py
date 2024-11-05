@@ -18,8 +18,8 @@ import numpy as np
 from tqdm import tqdm
 
 from saliencyserieslab.load_sktime_classifier import SktimeClassifier
-from plot import plot_weighted_graph
-from load_explainer import Explainer
+from saliencyserieslab.plotting import plot_weighted_graph
+from saliencyserieslab.explainers.load_explainer import Explainer
 
 # logger = logging.getLogger('src')
 # logger.setLevel(logging.DEBUG)

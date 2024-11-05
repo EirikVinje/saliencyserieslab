@@ -30,9 +30,9 @@ def train(model, traindata, evaldata, save_model : bool = False):
     predictions = model.predict(eval_x)
     accuracy = accuracy_score(eval_y, predictions)
     
-    # print()
-    # print(f'Accuracy: {accuracy}')
-    # print()
+    print()
+    print(f'Accuracy: {accuracy}')
+    print()
     
     # report = classification_report(eval_y, predictions, target_names=labels, output_dict=True)
 
@@ -60,9 +60,10 @@ if __name__ == '__main__':
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_trainn5.pkl', help='Path to train data')
-    parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_testn5.pkl', help='Path to eval data')
-    parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet]')
+    parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_train_n10.pkl', help='Path to train data')
+    parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_test_n10.pkl', help='Path to eval data')
+    parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet, mrseql]')
+    parser.add_argument('--save', action=argparse.BooleanOptionalAction, default=False, help='save model')
     parser.add_argument('--id', type=str, help='model id')
     args = parser.parse_args()
 
@@ -70,6 +71,7 @@ if __name__ == '__main__':
     testpath = args.testpath
     MODEL_NAME = args.model
     MODEL_ID = args.id
+    save = args.save if args.save else False
 
     with open(trainpath, 'rb') as f:
         traindata = pickle.load(f)
@@ -77,10 +79,16 @@ if __name__ == '__main__':
     with open(testpath, 'rb') as f:
         evaldata = pickle.load(f)
 
-    model = SktimeClassifier()
+    print("train size : {}".format(traindata['x'].shape[0]))
+    print("eval size : {}".format(evaldata['x'].shape[0]))
+
+    with open("./modelconfigs/config.json", 'r') as f:
+        modelconfig = json.load(f)
+
+    model = SktimeClassifier(modelconfig)
     model.load_model(MODEL_NAME)
     
-    train(model, traindata, evaldata)
+    train(model, traindata, evaldata, save)
 
 
 

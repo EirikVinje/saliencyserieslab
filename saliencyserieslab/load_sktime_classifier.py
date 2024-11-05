@@ -11,9 +11,12 @@ from sktime.classification.deep_learning import InceptionTimeClassifier
 from sktime.classification.deep_learning import ResNetClassifier
 from sktime.classification.kernel_based import RocketClassifier
 
+# get mrseql
+from sktime.classification.shapelet_based import MrSEQL
+
 
 class SktimeClassifier:
-    def __init__(self, config : dict):
+    def __init__(self, config : dict = None):
         
         self.config = config
         
@@ -39,19 +42,26 @@ class SktimeClassifier:
             self._load_rocket()
         elif model == 'resnet':
             self._load_resnet()
+        elif model == 'mrseql':
+            self._load_mrseql()
         else:
             raise ValueError('Invalid model name')
     
 
-    def predict(self, x : np.ndarray):
+    def predict(self, x : np.ndarray, verbose : bool = True):
         
         assert len(x.shape) == 2, "Input must be a 2D numpy array"
 
-        sys.stdout = open(os.devnull, 'w')
-        predictions = self.model.predict(x)
-        sys.stdout = sys.__stdout__
-
-        return predictions
+        if verbose:
+            self.model.verbose = True
+            predictions = self.model.predict(x)
+            return predictions
+        
+        else:
+            sys.stdout = open(os.devnull, 'w')
+            predictions = self.model.predict(x)
+            sys.stdout = sys.__stdout__
+            return predictions
     
 
     def evaluate(self, x : np.ndarray, y : np.ndarray, metric : str='accuracy'):
@@ -108,4 +118,9 @@ class SktimeClassifier:
             use_multivariate="no", 
             )
         
+        self.name = self.model.__class__.__name__
+
+    def _load_mrseql(self):
+
+        self.model = MrSEQL(seql_mode="clf")
         self.name = self.model.__class__.__name__
