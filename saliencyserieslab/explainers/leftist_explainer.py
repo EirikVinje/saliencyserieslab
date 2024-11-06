@@ -16,20 +16,22 @@ from saliencyserieslab.load_sktime_classifier import SktimeClassifier
 from saliencyserieslab.plotting import plot_weighted_graph
 
 class LeftistExplainer:
-    def __init__(self, 
-                 model_fn : Callable = None, 
-                 perturbation_ratio : float=0.4, 
-                 adjacency_prob : float=0.9, 
-                 num_samples : int=5000, 
-                 segment_size : int=1, 
-                 sigma : float=0.1):
-    
+    def __init__(
+            self, 
+            random_background : np.ndarray = None,
+            perturbation_ratio : float=0.4, 
+            model_fn : Callable = None, 
+            num_samples : int=5000, 
+            segment_size : int=1, 
+            sigma : float=0.1,
+                 ):
+
         self.perturbation_ratio = perturbation_ratio
-        self.adjacency_prob = adjacency_prob
+        self.random_background = random_background
         self.segment_size = segment_size
         self.num_samples = num_samples
         self.model_fn = model_fn
-        self.sigma = sigma    
+        self.sigma = sigma
 
 
     def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
@@ -64,14 +66,14 @@ class LeftistExplainer:
                         start = j * self.segment_size
                         end = start + self.segment_size
 
-                        method = np.random.choice(['total_mean', 'mean', 'noise'])
+                        method = np.random.choice(["linear_interpolation", "constant", "random_background"])
 
-                        if method == 'total_mean':
-                            x_perturb = self._perturb_total_mean(x_perturb, start, end)
-                        elif method == 'mean':
-                            x_perturb = self._perturb_mean(x_perturb, start, end)
-                        elif method == 'noise':
-                            x_perturb = self._perturb_noise(x_perturb, start, end)
+                        if method == 'linear_interpolation':
+                            x_perturb = self._perturb_linear_interpolation(x_perturb, start, end)
+                        elif method == 'constant':
+                            x_perturb = self._perturb_constant(x_perturb, start, end)
+                        elif method == 'random_background':
+                            x_perturb = self._perturb_random_background(x_perturb, start, end)
 
                     bar.update(1)
 
@@ -82,82 +84,27 @@ class LeftistExplainer:
         perturbed_binary = perturbed_matrix 
 
         return perturbed_data, perturbed_binary
+
+
+    def _perturb_linear_interpolation(self, x : np.ndarray, start_idx : int, end_idx : int):
+
+        x[start_idx:end_idx] = np.linspace(x[start_idx], x[end_idx], end_idx - start_idx)
+        return x
     
 
-    def _perturb_data(self, x : np.ndarray):
+    def perturb_constant(self, x : np.ndarray, start_idx : int, end_idx : int):
+        
+        x[start_idx:end_idx] = np.repeat(x[start_idx], end_idx - start_idx)
+        return x
     
-        assert len(x.shape) == 1, "Input must be a 1D numpy array"
-        
-        padded_length = ((x.shape[0] - 1) // self.segment_size + 1) * self.segment_size
-        padded_timeseries = np.pad(x, (0, padded_length - x.shape[0]), mode='constant', constant_values=0)
-        
-        padded_timeseries = padded_timeseries.astype(float)
-        
-        num_segments = padded_length // self.segment_size
-        num_perturb = int(num_segments * self.perturbation_ratio)
-        
-        perturbed_samples = []
-        binary_representations = []
-        
-        for _ in range(self.num_samples):
-            perturb_mask = np.zeros(num_segments, dtype=bool)
-            
-            current_segment = np.random.randint(0, num_segments)
-            perturb_mask[current_segment] = True
-            
-            while np.sum(perturb_mask) < num_perturb:
-                if np.random.random() < self.adjacency_prob:
-                    direction = np.random.choice([-1, 1])  
-                    next_segment = (current_segment + direction) % num_segments
-                else:
-                    unperturbed = np.where(~perturb_mask)[0]
-                    next_segment = np.random.choice(unperturbed)
-                
-                perturb_mask[next_segment] = True
-                current_segment = next_segment
-            
-            perturbed = np.copy(padded_timeseries)
-            binary_rep = np.ones(num_segments)
-            
-            for idx in np.where(perturb_mask)[0]:
-                start = idx * self.segment_size
-                end = start + self.segment_size
-                
-                method = np.random.choice(['zero', 'noise', 'shuffle'])
-                
-                if method == 'zero':
-                    perturbed[start:end] = 0
-                elif method == 'noise':
-                    perturbed[start:end] += np.random.normal(0, np.std(x), self.segment_size)
-                elif method == 'shuffle':
-                    np.random.shuffle(perturbed[start:end])
-                
-                binary_rep[idx] = 0
-            
-            perturbed_samples.append(perturbed[:x.shape[0]])
-            binary_representations.append(binary_rep)
-        
-        return np.array(perturbed_samples), np.array(binary_representations)
 
-
-    def _perturb_total_mean(self, x : np.ndarray, start_idx : int, end_idx : int):
+    def perturb_random_background(self, x : np.ndarray, start_idx : int, end_idx : int):
         
-        x[start_idx:end_idx] = np.repeat(np.mean(x), end_idx - start_idx)
-        return x
-                
-
-    def _perturb_mean(self, x : np.ndarray, start_idx : int, end_idx : int):
-        
-        x[start_idx:end_idx] = np.repeat(np.mean(x[start_idx:end_idx]), end_idx - start_idx)
-        return x
-        
-        
-    def _perturb_noise(self, x : np.ndarray, start_idx : int, end_idx : int):
-        
-        x[start_idx:end_idx] = np.random.uniform(x.min(), x.max(), end_idx - start_idx)
+        random_backgroung = np.random.choice(self.random_background)
+        x[start_idx:end_idx] = random_backgroung[start_idx:end_idx]
         return x
 
-    
+
     def explain_instance(
             self,
             x : np.ndarray,
@@ -173,7 +120,6 @@ class LeftistExplainer:
         
         """
 
-        # perturbed_data, binary_rep = self._perturb_data(x)
         perturbed_data, binary_rep = self._make_perturbed_data(x)
 
         if explainer == "lime":
@@ -200,8 +146,7 @@ class LeftistExplainer:
         
         elif explainer == "shap":
             
-            perturbed_data = shap.kmeans(perturbed_data, 100)
-
+            perturbed_data = shap.sample(perturbed_data, 100)
             shap_explainer = shap.KernelExplainer(self.model_fn, perturbed_data, algorithm="linear")
             w = shap_explainer.shap_values(x, gc_collect=True, silent=True).reshape(-1)
             w = np.interp(w, (w.min(), w.max()), (0, 1))
@@ -214,24 +159,21 @@ if __name__ == "__main__":
 
     model.load_pretrained_model("./models/inception_1")
 
+    datapath = "./data/insectsound/insectsound_test_n10.pkl"
+    with open(datapath, 'rb') as f:
+        data = pickle.load(f)
+    print("loaded {} instances from : {}".format(data['x'].shape[0], datapath))
+
     explainer = LeftistExplainer(
         model_fn=model.predict, 
         perturbation_ratio=0.5,
-        adjacency_prob=0.7,
         num_samples=20_000,
         segment_size=20,
         sigma=0.1,
         )
     
     print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
-
-    datapath = "./data/insectsound/insectsound_test_n10.pkl"
-
-    with open(datapath, 'rb') as f:
-        data = pickle.load(f)
     
-    print("loaded {} instances from : {}".format(data['x'].shape[0], datapath))
-
     sample = data['x'][0]
     
     print("explaining sample : {}".format(sample.shape))
@@ -243,4 +185,4 @@ if __name__ == "__main__":
     w = w.reshape(-1)
     sample = sample.reshape(-1)
 
-    plot_weighted_graph(sample, w, f"./plots/{method}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+    plot_weighted_graph(sample, w, f"./plots/leftist_{method}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")
