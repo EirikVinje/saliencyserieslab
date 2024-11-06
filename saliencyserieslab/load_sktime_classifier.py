@@ -62,6 +62,22 @@ class SktimeClassifier:
             predictions = self.model.predict(x)
             sys.stdout = sys.__stdout__
             return predictions
+
+
+    def predict_proba(self, x : np.ndarray, verbose : bool = False):
+        
+        assert len(x.shape) == 2, "Input must be a 2D numpy array"
+
+        if verbose:
+            self.model.verbose = True
+            predictions = self.model.predict_proba(x)
+            return predictions
+        
+        else:
+            sys.stdout = open(os.devnull, 'w')
+            predictions = self.model.predict_proba(x)
+            sys.stdout = sys.__stdout__
+            return predictions
     
 
     def evaluate(self, x : np.ndarray, y : np.ndarray, metric : str='accuracy'):

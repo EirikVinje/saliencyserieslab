@@ -74,7 +74,7 @@ def format_dataset(
 
 if __name__ == "__main__":
 
-    if not os.path.isfile('./setup.sh'):
+    if not os.path.isfile('./setup.py'):
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     parser = argparse.ArgumentParser()

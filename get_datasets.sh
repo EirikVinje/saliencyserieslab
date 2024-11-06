@@ -41,7 +41,6 @@ fi
 PKL_PATH="$(pwd)/data/insectsound/insectsound_train.pkl"
 if [ ! -f "$PKL_PATH" ]; then
     echo "Formatting the InsectSound dataset..."
-    python utils/format_insectsound.py --n_classes 5
     python utils/format_insectsound.py --n_classes 10
     # rm -rf data/insectsound/*.arff
 fi
