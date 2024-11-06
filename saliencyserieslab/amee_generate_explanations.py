@@ -17,7 +17,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import numpy as np
 from tqdm import tqdm
 
-from saliencyserieslab.load_sktime_classifier import SktimeClassifier
+from saliencyserieslab.amee_classifier import SktimeClassifier
 from saliencyserieslab.plotting import plot_weighted_graph
 from saliencyserieslab.explainers.load_explainer import Explainer
 

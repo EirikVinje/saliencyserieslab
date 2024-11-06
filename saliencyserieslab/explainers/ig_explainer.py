@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 
-from saliencyserieslab.load_sktime_classifier import SktimeClassifier
+from saliencyserieslab.amee_classifier import SktimeClassifier
 from saliencyserieslab.plotting import plot_weighted_graph
 
 

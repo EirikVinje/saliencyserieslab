@@ -13,22 +13,22 @@ def generate_config(configpath : str = None):
 
     config["inception"]["bottleneck_size"] = 32
     config["inception"]["random_state"] = 42
-    config["inception"]["kernel_size"] = 5
+    config["inception"]["kernel_size"] = 40
     config["inception"]["batch_size"] = 64
     config["inception"]["n_filters"] = 64
-    config["inception"]["n_epochs"] = 30
+    config["inception"]["n_epochs"] = 10
     config["inception"]["verbose"] = 1
     config["inception"]["depth"] = 5
 
-    config["rocket"]["max_dilations_per_kernel"] = 8
+    config["rocket"]["max_dilations_per_kernel"] = 32
     config["rocket"]["rocket_transform"] = "rocket"
-    config["rocket"]["n_features_per_kernel"] = 8
-    config["rocket"]["num_kernels"] = 5000
+    config["rocket"]["n_features_per_kernel"] = 4
+    config["rocket"]["num_kernels"] = 2500
     config["rocket"]["random_state"] = 42
 
     config["resnet"]["random_state"] = 42
     config["resnet"]["batch_size"] = 64
-    config["resnet"]["n_epochs"] = 30    
+    config["resnet"]["n_epochs"] = 15  
     config["resnet"]["verbose"] = 1
 
     if configpath is not None:
@@ -71,7 +71,7 @@ def generate_hp_config(modelname : str, trial : optuna.trial.Trial):
 
         config["resnet"]["batch_size"] = trial.suggest_categorical("batch_size", [32, 64, 128])
         config["resnet"]["random_state"] = 42
-        config["resnet"]["n_epochs"] = 30    
+        config["resnet"]["n_epochs"] = 10
         config["resnet"]["verbose"] = 1
 
     return config

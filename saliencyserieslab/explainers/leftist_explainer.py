@@ -12,8 +12,8 @@ from tqdm import tqdm
 import numpy as np
 import shap
 
-from saliencyserieslab.load_sktime_classifier import SktimeClassifier
-from saliencyserieslab.plotting import plot_weighted_graph
+from saliencyserieslab.amee_classifier import SktimeClassifier
+from saliencyserieslab.plotting import plot_weighted_graph, plot_graph
 
 class LeftistExplainer:
     def __init__(
@@ -23,7 +23,6 @@ class LeftistExplainer:
             model_fn : Callable = None, 
             num_samples : int=5000, 
             segment_size : int=1, 
-            sigma : float=0.1,
                  ):
 
         self.perturbation_ratio = perturbation_ratio
@@ -31,8 +30,7 @@ class LeftistExplainer:
         self.segment_size = segment_size
         self.num_samples = num_samples
         self.model_fn = model_fn
-        self.sigma = sigma
-
+        
 
     def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
 
@@ -62,7 +60,7 @@ class LeftistExplainer:
                 for j in range(num_segments):
                         
                     if perturbed_matrix[i, j] == 0:
-
+                        
                         start = j * self.segment_size
                         end = start + self.segment_size
 
@@ -77,6 +75,8 @@ class LeftistExplainer:
 
                     bar.update(1)
 
+                # plot_graph(x_perturb, x, f"./plots/perturbed_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+                
                 perturbed_data.append(x_perturb)
 
         perturbed_data = np.vstack(perturbed_data)
@@ -87,21 +87,28 @@ class LeftistExplainer:
 
 
     def _perturb_linear_interpolation(self, x : np.ndarray, start_idx : int, end_idx : int):
+        
+        if end_idx >= x.shape[0]:
+            end_idx = x.shape[0]-1
 
-        x[start_idx:end_idx] = np.linspace(x[start_idx], x[end_idx], end_idx - start_idx)
+        perturbation = np.linspace(x[start_idx], x[end_idx], end_idx - start_idx)
+        x[start_idx:end_idx] = perturbation
         return x
     
 
-    def perturb_constant(self, x : np.ndarray, start_idx : int, end_idx : int):
-        
-        x[start_idx:end_idx] = np.repeat(x[start_idx], end_idx - start_idx)
+    def _perturb_constant(self, x : np.ndarray, start_idx : int, end_idx : int):
+
+        perturbation = np.repeat(x[start_idx], end_idx - start_idx)
+        x[start_idx:end_idx] = perturbation
         return x
     
 
-    def perturb_random_background(self, x : np.ndarray, start_idx : int, end_idx : int):
+    def _perturb_random_background(self, x : np.ndarray, start_idx : int, end_idx : int):
         
-        random_backgroung = np.random.choice(self.random_background)
-        x[start_idx:end_idx] = random_backgroung[start_idx:end_idx]
+        rand_idx = np.random.choice(range(self.random_background.shape[0]))
+        perturbation = self.random_background[rand_idx, start_idx:end_idx]
+        
+        x[start_idx:end_idx] = perturbation
         return x
 
 
@@ -119,28 +126,27 @@ class LeftistExplainer:
         :return: The explanation.
         
         """
-
+        
         perturbed_data, binary_rep = self._make_perturbed_data(x)
 
         if explainer == "lime":
             
             distances = pairwise_distances(perturbed_data, x.reshape(1, -1), metric='euclidean')
-
-            apply_similarity = np.vectorize(lambda x: np.exp(-(x ** 2) / (2 * self.sigma ** 2)))
-            distances = apply_similarity(distances).reshape(-1)
-
-            logreg = LogisticRegression(solver='lbfgs', n_jobs=multiprocessing.cpu_count()-2, max_iter=1000)
-            
+            distances = np.interp(distances, (distances.min(), distances.max()), (0, 1)).reshape(-1)
+  
             perturbed_predictions = self.model_fn(perturbed_data)
             
+            logreg = LogisticRegression(
+                solver='lbfgs', 
+                n_jobs=multiprocessing.cpu_count()-2, 
+                max_iter=1000
+                )
             logreg.fit(binary_rep, perturbed_predictions, sample_weight=distances)
 
-            w = logreg.coef_[0].reshape(-1)
+            explanation = logreg.coef_[0].reshape(-1)
 
-            w = np.interp(w, (w.min(), w.max()), (0, 1))
-            w = np.repeat(w, x.shape[0] // w.shape[0])
-
-            explanation = w
+            explanation = np.interp(explanation, (explanation.min(), explanation.max()), (0, 1))
+            explanation = np.repeat(explanation, x.shape[0] // explanation.shape[0])
 
             return explanation
         
@@ -153,8 +159,11 @@ class LeftistExplainer:
             return w
 
 
+
 if __name__ == "__main__":
     
+    np.random.seed(42)
+
     model = SktimeClassifier()
 
     model.load_pretrained_model("./models/inception_1")
@@ -165,24 +174,26 @@ if __name__ == "__main__":
     print("loaded {} instances from : {}".format(data['x'].shape[0], datapath))
 
     explainer = LeftistExplainer(
+        random_background=shap.sample(data['x'], 100),
         model_fn=model.predict, 
         perturbation_ratio=0.5,
         num_samples=20_000,
-        segment_size=20,
-        sigma=0.1,
+        segment_size=30,
         )
     
     print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
     
-    sample = data['x'][0]
+    sample = data['x'][1000]
     
     print("explaining sample : {}".format(sample.shape))
 
     method = "shap"
 
-    w = explainer.explain_instance(sample, method)
+    w = explainer.explain_instance(
+        sample, 
+        method
+        )
 
-    w = w.reshape(-1)
     sample = sample.reshape(-1)
-
+    w = w.reshape(-1)
     plot_weighted_graph(sample, w, f"./plots/leftist_{method}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")

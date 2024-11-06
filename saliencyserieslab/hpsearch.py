@@ -4,19 +4,15 @@ import pickle
 import gc
 import os
 
+from sklearn.preprocessing import StandardScaler
+from aeon.datasets import load_classification
 from sklearn.metrics import accuracy_score
+import numpy as np
 import optuna
 
-from load_sktime_classifier import SktimeClassifier
-from train_sktime_classifier import train
+from saliencyserieslab.amee_classifier import SktimeClassifier
+from saliencyserieslab.amee_train_classifier import train
 from generate_config import generate_hp_config
-
-logger = logging.getLogger('saliencyserieslab')
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
 
 
 def objective(trail):
@@ -25,9 +21,9 @@ def objective(trail):
 
     model = SktimeClassifier(hpconfig)
     
-    model.fit(traindata['x'], traindata['y'])
+    model.fit(train['x'], train['y'])
 
-    accuracy = model.evaluate(evaldata['x'], evaldata['y'])
+    accuracy = model.evaluate(test['x'], test['y'])
 
     return accuracy
     
@@ -39,29 +35,41 @@ if  __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--trainpath', type=str, default='./data/insectsound/insectsound_train_n10.pkl', help='Path to train data')
-    parser.add_argument('--testpath', type=str, default='./data/insectsound/insectsound_test_n10.pkl', help='Path to eval data')
+    parser.add_argument('--dataset', type=str, default='ECG5000', help='Path to train data')
     parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet]')
     parser.add_argument('--trial', type=int, default=10, help='number of trials')
     args = parser.parse_args()
 
-    trainpath = args.trainpath
-    testpath = args.testpath
+    DATASET = args.dataset
     MODEL_NAME = args.model
     
-    logger.info("Running {}".format(__file__))
+    train = load_classification(DATASET, split="train")
+    test = load_classification(DATASET, split="test")
 
-    with open(trainpath, 'rb') as f:
-        traindata = pickle.load(f)
-    logger.info(f'Loaded train data from {trainpath}')
+    unique_classes = np.unique(train[1]).tolist()
+    unique_classes = [int(c) for c in unique_classes]
+    unique_classes.sort()
+ 
+    train = {
+        "x" : train[0].squeeze(),
+        "y" : np.array([unique_classes.index(int(c)) for c in train[1]]),
+    }
 
-    with open(testpath, 'rb') as f:
-        evaldata = pickle.load(f)
-    logger.info(f'Loaded eval data from {testpath}')
+    test = {
+        "x" : test[0].squeeze(),
+        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
+    }
+
+    scaler = StandardScaler()
+    train['x'] = scaler.fit_transform(train['x'])
+    test['x'] = scaler.transform(test['x'])
 
     model = SktimeClassifier()
     model.load_model(MODEL_NAME)
 
-    study = optuna.create_study(direction='maximize', storage="sqlite:///optuna.db", study_name=f"{MODEL_NAME}_study")
+    study = optuna.create_study(
+        direction='maximize', 
+        storage="sqlite:///optuna.db", 
+        study_name=f"{MODEL_NAME}_{DATASET}_study")
     
     study.optimize(objective, n_trials=args.trial)

@@ -7,7 +7,7 @@ import os
 import numpy as np
 import shap
 
-from saliencyserieslab.load_sktime_classifier import SktimeClassifier
+from saliencyserieslab.amee_classifier import SktimeClassifier
 from saliencyserieslab.plotting import plot_weighted_graph
 
 

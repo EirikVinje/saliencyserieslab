@@ -11,9 +11,9 @@ import subprocess
 from tqdm import tqdm
 import numpy as np
 
-from generate_perturbed_data import PerturbedDataGenerator
-from saliencyserieslab.generate_explanations import generate_explanations
-from load_sktime_classifier import SktimeClassifier
+from saliencyserieslab.amee_generate_perturbed_data import PerturbedDataGenerator
+from saliencyserieslab.amee_generate_explanations import generate_explanations
+from saliencyserieslab.amee_classifier import SktimeClassifier
 
 # logger = logging.getLogger('saliencyserieslab')
 # logger.setLevel(logging.DEBUG)

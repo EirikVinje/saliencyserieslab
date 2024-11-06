@@ -12,7 +12,7 @@ from tqdm import tqdm
 import numpy as np
 import shap
 
-from saliencyserieslab.load_sktime_classifier import SktimeClassifier
+from saliencyserieslab.amee_classifier import SktimeClassifier
 from saliencyserieslab.plotting import plot_weighted_graph
 
 
@@ -22,19 +22,16 @@ class LimeExplainer:
             random_background : np.ndarray = None,
             perturbation_ratio : float=0.4, 
             model_fn : Callable = None, 
-            adjacency_prob : float=0.9, 
             num_samples : int=5000, 
             segment_size : int=1, 
-            sigma : float=0.1,
-                 ):
+            ):
 
         self.perturbation_ratio = perturbation_ratio
         self.random_background = random_background
         self.segment_size = segment_size
         self.num_samples = num_samples
         self.model_fn = model_fn
-        self.sigma = sigma
-
+        
 
     def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
 
@@ -44,18 +41,18 @@ class LimeExplainer:
         
         perturbed_matrix = np.random.choice(
             [0, 1], 
-            size=(self.num_samples, x_copy.shape[1]), 
+            size=(self.num_samples, x_copy.shape[0]), 
             p=[self.perturbation_ratio, 1-self.perturbation_ratio]
             )
         
         perturbed_data = []
         
-        with tqdm(total=int(self.num_samples*x_copy.shape[1]), disable=not progress_bar, desc="Perturbing data") as bar:
+        with tqdm(total=int(self.num_samples*x_copy.shape[0]), disable=not progress_bar, desc="Perturbing data") as bar:
 
             for i in range(self.num_samples):
                 x_perturb = x_copy.copy()
 
-                for j in range(x_copy.shape[1]):
+                for j in range(x_copy.shape[0]):
                         
                     if perturbed_matrix[i, j] == 0:
 
@@ -96,8 +93,7 @@ class LimeExplainer:
     
         distances = pairwise_distances(perturbed_data, x.reshape(1, -1), metric='euclidean')
 
-        apply_similarity = np.vectorize(lambda x: np.exp(-(x ** 2) / (2 * self.sigma ** 2)))
-        distances = apply_similarity(distances).reshape(-1)
+        distances = np.interp(distances, (distances.min(), distances.max()), (0, 1)).reshape(-1)
 
         logreg = LogisticRegression(solver='lbfgs', n_jobs=multiprocessing.cpu_count()-2, max_iter=1000)
         
@@ -105,12 +101,10 @@ class LimeExplainer:
         
         logreg.fit(binary_rep, perturbed_predictions, sample_weight=distances)
 
-        w = logreg.coef_[0].reshape(-1)
+        explanation = logreg.coef_[0].reshape(-1)
 
-        w = np.interp(w, (w.min(), w.max()), (0, 1))
-        w = np.repeat(w, x.shape[0] // w.shape[0])
-
-        explanation = w
+        explanation = np.interp(explanation, (explanation.min(), explanation.max()), (0, 1))
+        explanation = np.repeat(explanation, x.shape[0] // explanation.shape[0])
 
         return explanation
 
@@ -129,9 +123,8 @@ if __name__ == "__main__":
     explainer = LimeExplainer(
         model_fn=model.predict, 
         perturbation_ratio=0.5,
-        num_samples=20_000,
+        num_samples=1_000,
         segment_size=20,
-        sigma=0.1,
         )
     
     print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
