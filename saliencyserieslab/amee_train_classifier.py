@@ -7,6 +7,7 @@ import pickle
 import zipfile
 import json
 import time
+import csv
 import os
 
 from sklearn.metrics import accuracy_score, classification_report
@@ -15,7 +16,7 @@ from aeon.datasets import load_classification
 from sktime.utils import mlflow_sktime
 import numpy as np
 
-from saliencyserieslab.amee_classifier import SktimeClassifier
+from saliencyserieslab.classifier import SktimeClassifier
 from generate_config import generate_config
 
 
@@ -31,13 +32,13 @@ def train_classifier(model, traindata, evaldata, save_model : bool = False):
     print("starting training...")
     start = time.time()
     model.fit(train_x, train_y)
+    end = time.time()   
     print("finished training")
 
     eval_x, eval_y = evaldata['x'], evaldata['y']
     
     print("evaluating model...")
     predictions = model.predict(eval_x, verbose=True)
-    end = time.time()   
     print("finished evaluation")
     
     accuracy = accuracy_score(eval_y, predictions)
@@ -53,18 +54,34 @@ def train_classifier(model, traindata, evaldata, save_model : bool = False):
     print()
 
     if save_model:
-        mlflow_sktime.save_model(model, model_save_path)
+        mlflow_sktime.save_model(model.model, model_save_path)
         
-        metaconfig = {
+        training_report = {
             "accuracy" : accuracy,
             "precisions" : list(report.items())[np.unique(train_y).shape[0]:],
-            "training_infernce_time" : end - start
+            "training_time" : "{} minutes".format((end - start) / 60),
         }
 
-        with open(f'{model_save_path}/metaconfig.json', 'w') as f:
-            json.dump(metaconfig, f)
+        with open(f'{model_save_path}/training_report.json', 'w') as f:
+            json.dump(training_report, f)
+
+        print("model and results saved to {}".format(model_save_path))
+        time.sleep(3)
 
     
+    if not os.path.isfile("./training_report.csv"):
+
+        with open("./training_report.csv", 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(["dataset", "model", "accuracy", "training_time", "datetime"])
+
+    with open("./training_report.csv", 'a') as f:
+        writer = csv.writer(f)
+        writer.writerow([DATASET, MODEL_NAME, accuracy, training_report["training_time"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+
+    print("training report saved in {}".format("./training_report.csv"))
+
+
 if __name__ == '__main__':
     
     """
@@ -112,6 +129,7 @@ if __name__ == '__main__':
     train['x'] = scaler.fit_transform(train['x'])
     test['x'] = scaler.transform(test['x'])
 
+    print("dataset : {}".format(DATASET))
     print("train : {}, {}".format(train['x'].shape, train['y'].shape))
     print("test : {}, {}".format(test['x'].shape, test['y'].shape))
     print("number of classes : {}".format(len(unique_classes)))

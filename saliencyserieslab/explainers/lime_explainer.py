@@ -6,31 +6,31 @@ import json
 import os
 
 from sklearn.metrics.pairwise import pairwise_distances
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from scipy.spatial.distance import euclidean
+from sklearn.linear_model import LogisticRegression
+from aeon.datasets import load_classification
 from tqdm import tqdm
 import numpy as np
 import shap
 
-from saliencyserieslab.amee_classifier import SktimeClassifier
-from saliencyserieslab.plotting import plot_weighted_graph
+from saliencyserieslab.plotting import plot_simple_weighted
+from saliencyserieslab.classifier import SktimeClassifier
 
 
 class LimeExplainer:
     def __init__(
             self, 
+            model, 
             random_background : np.ndarray = None,
-            perturbation_ratio : float=0.4, 
-            model_fn : Callable = None, 
-            num_samples : int=5000, 
-            segment_size : int=1, 
+            perturbation_ratio : float=0.6, 
+            num_samples : int=2500, 
+            segment_size : int=4, 
             ):
 
         self.perturbation_ratio = perturbation_ratio
         self.random_background = random_background
         self.segment_size = segment_size
         self.num_samples = num_samples
-        self.model_fn = model_fn
+        self.model = model
         
 
     def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
@@ -97,7 +97,7 @@ class LimeExplainer:
 
         logreg = LogisticRegression(solver='lbfgs', n_jobs=multiprocessing.cpu_count()-2, max_iter=1000)
         
-        perturbed_predictions = self.model_fn(perturbed_data)
+        perturbed_predictions = self.model.predict(perturbed_data)
         
         logreg.fit(binary_rep, perturbed_predictions, sample_weight=distances)
 
@@ -111,31 +111,43 @@ class LimeExplainer:
 
 if __name__ == "__main__":
     
+    np.random.seed(42)
+
+    modelpath = "./models/rocket_ECG200_1"
+    dataset = modelpath.split("/")[-1].split("_")[1]
+
     model = SktimeClassifier()
+    model.load_pretrained_model(modelpath)
 
-    model.load_pretrained_model("./models/inception_1")
+    test = load_classification(dataset, split="test")
 
-    datapath = "./data/insectsound/insectsound_test_n10.pkl"
-    with open(datapath, 'rb') as f:
-        data = pickle.load(f)
-    print("loaded {} instances from : {}".format(data['x'].shape[0], datapath))
+    unique_classes = np.unique(test[1]).tolist()
+    unique_classes = [int(c) for c in unique_classes]
+    unique_classes.sort()
+ 
+    test = {
+        "x" : test[0].squeeze(),
+        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
+    }
 
     explainer = LimeExplainer(
-        model_fn=model.predict, 
-        perturbation_ratio=0.5,
-        num_samples=1_000,
-        segment_size=20,
-        )
+        model=model,
+    )
     
     print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
     
-    sample = data['x'][0]
-    
-    print("explaining sample : {}".format(sample.shape))
+    sample = test["x"][np.random.randint(0, test["x"].shape[0])]
 
     w = explainer.explain_instance(sample)
 
-    w = w.reshape(-1)
     sample = sample.reshape(-1)
+    w = w.reshape(-1)
 
-    plot_weighted_graph(sample, w, f"./plots/lime_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+    plot_simple_weighted(
+        sample, 
+        w, 
+        f"./plots/lime_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png",
+        model.model.__class__.__name__,
+        explainer.__class__.__name__,
+        dataset
+        )

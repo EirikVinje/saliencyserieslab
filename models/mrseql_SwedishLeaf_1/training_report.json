@@ -1,0 +1,1 @@
+{"accuracy": 0.8816, "precisions": [["accuracy", 0.8816], ["macro avg", {"precision": 0.8844280199625778, "recall": 0.8847822421735465, "f1-score": 0.8813797960939392, "support": 625.0}], ["weighted avg", {"precision": 0.8879820236708812, "recall": 0.8816, "f1-score": 0.8815252929359209, "support": 625.0}]], "training_time": "0.6267027616500854 minutes"}

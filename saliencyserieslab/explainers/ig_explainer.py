@@ -2,15 +2,20 @@ from typing import Optional, Tuple, Union
 import datetime
 import pickle
 
-import numpy as np
+from aeon.datasets import load_classification
 from tqdm import tqdm
+import numpy as np
 
-from saliencyserieslab.amee_classifier import SktimeClassifier
-from saliencyserieslab.plotting import plot_weighted_graph
+from saliencyserieslab.plotting import plot_simple_weighted
+from saliencyserieslab.classifier import SktimeClassifier
 
 
-class IntegratedGradients:
-    def __init__(self, model, n_steps: int = 50):
+class IntegratedGradientsExplainer:
+    def __init__(
+            self, 
+            model, 
+            n_steps: int = 5
+            ):
         """
         Initialize Integrated Gradients for single instance interpretation.
         
@@ -20,6 +25,7 @@ class IntegratedGradients:
         """
         self.model = model
         self.n_steps = n_steps
+        
         
     def generate_baseline(self, input_data: np.ndarray) -> np.ndarray:
         """
@@ -32,6 +38,7 @@ class IntegratedGradients:
             Baseline array of same shape as input
         """
         return np.zeros_like(input_data)
+    
     
     def interpolate_inputs(self, input_data: np.ndarray, baseline: np.ndarray) -> np.ndarray:
         """
@@ -53,6 +60,7 @@ class IntegratedGradients:
         
         return interpolated
     
+
     def compute_gradients(self, interpolated_inputs: np.ndarray, target_class: int) -> np.ndarray:
         """
         Compute numerical gradients for interpolated inputs using finite differences.
@@ -90,7 +98,7 @@ class IntegratedGradients:
                     
         return gradients
     
-    def explain(
+    def explain_instance(
         self, 
         input_data: np.ndarray,
         target_class: Optional[int] = None,
@@ -141,24 +149,50 @@ class IntegratedGradients:
         
         return integrated_grads, approximation_error
 
+
 if __name__ == "__main__":
-    
-    datapath = "./data/insectsound/insectsound_test_n10.pkl"
-    with open(datapath, 'rb') as f:
-        data = pickle.load(f)
-    
+
+    np.random.seed(42)
+
+    modelpath = "./models/rocket_ECG200_1"
+    dataset = modelpath.split("/")[-1].split("_")[1]
+
     model = SktimeClassifier()
-    model.load_pretrained_model("./models/inception_1")
+    model.load_pretrained_model(modelpath)
+
+    test = load_classification(dataset, split="test")
+
+    unique_classes = np.unique(test[1]).tolist()
+    unique_classes = [int(c) for c in unique_classes]
+    unique_classes.sort()
+ 
+    test = {
+        "x" : test[0].squeeze(),
+        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
+    }
+
+    explainer = IntegratedGradientsExplainer(
+        model=model,
+        n_steps=5,
+    )
     
-    ig = IntegratedGradients(model, n_steps=2)
-
-    timeseries = data["x"][0].reshape(-1)
+    print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
     
-    w, error = ig.explain(timeseries, target_class=data["y"][0])
+    sample = test["x"][np.random.randint(0, test["x"].shape[0])]
 
-    w = np.interp(w, (w.min(), w.max()), (0, 1))
+    w = explainer.explain_instance(sample)
 
-    plot_weighted_graph(timeseries, w, f"./plots/integrated_gradients_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+    sample = sample.reshape(-1)
+    w = w.reshape(-1)
+
+    plot_simple_weighted(
+        sample, 
+        w, 
+        f"./plots/integrated_gradients_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png",
+        model.model.__class__.__name__,
+        explainer.__class__.__name__,
+        )
+
 
 
 
