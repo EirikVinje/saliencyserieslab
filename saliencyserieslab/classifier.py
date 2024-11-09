@@ -14,7 +14,7 @@ from sktime.classification.deep_learning import ResNetClassifier
 from sktime.classification.kernel_based import RocketClassifier
 from sktime.classification.dictionary_based import WEASEL
 from sktime.classification.shapelet_based import MrSEQL
-from mrsqm import MrSQMClassifier
+# from mrsqm import MrSQMClassifier
 
 
 
@@ -162,23 +162,25 @@ class SktimeClassifier:
 
 
 
-class MrsqmClassifier:
+# class MrsqmClassifier:
 
-    def __init__(self):
+#     def __init__(self):
         
-        self.model = MrSQMClassifier()
-        self.name = self.model.__class__.__name__
+#         self.model = MrSQMClassifier()
+#         self.name = self.model.__class__.__name__
 
     
-    def fit(self, x : np.ndarray, y : np.ndarray):
-        self.model.fit(x, y)
+#     def fit(self, x : np.ndarray, y : np.ndarray):
+#         self.model.fit(x, y)
 
 
-    def predict(self, x : np.ndarray):
-        return self.model.predict(x)
+#     def predict(self, x : np.ndarray):
+#         return self.model.predict(x)
     
 
-    def explain_instance(self, x : np.ndarray):
+#     def explain_instance(self, x : np.ndarray):
         
-        explanation = self.model.get_saliency_map(x)
-        print(explanation)
+#         explanation = self.model.get_saliency_map(x)
+#         print(explanation)
+
+
