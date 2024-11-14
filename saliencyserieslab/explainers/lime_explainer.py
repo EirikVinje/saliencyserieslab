@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, List
 import multiprocessing
 import datetime
 import pickle
@@ -12,7 +12,6 @@ from tqdm import tqdm
 import numpy as np
 import shap
 
-from saliencyserieslab.plotting import plot_simple_weighted
 from saliencyserieslab.classifier import SktimeClassifier
 
 
@@ -20,17 +19,15 @@ class LimeExplainer:
     def __init__(
             self, 
             model, 
-            random_background : np.ndarray = None,
             perturbation_ratio : float=0.6, 
-            num_samples : int=2500, 
-            segment_size : int=4, 
+            num_samples : int=2500,
+            progress_bar : bool=False
             ):
 
         self.perturbation_ratio = perturbation_ratio
-        self.random_background = random_background
-        self.segment_size = segment_size
         self.num_samples = num_samples
         self.model = model
+        self.progress_bar = progress_bar
         
 
     def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
@@ -47,7 +44,7 @@ class LimeExplainer:
         
         perturbed_data = []
         
-        with tqdm(total=int(self.num_samples*x_copy.shape[0]), disable=not progress_bar, desc="Perturbing data") as bar:
+        with tqdm(total=int(self.num_samples*x_copy.shape[0]), disable=not self.progress_bar, desc="Perturbing data") as bar:
 
             for i in range(self.num_samples):
                 x_perturb = x_copy.copy()
@@ -76,10 +73,7 @@ class LimeExplainer:
         return perturbed_data, perturbed_binary
 
     
-    def explain_instance(
-            self,
-            x : np.ndarray,
-    ):
+    def explain_instance(self, x : np.ndarray, y : np.ndarray,) -> List[float]:
         
         """
         Explains an instance x .
@@ -95,18 +89,27 @@ class LimeExplainer:
 
         distances = np.interp(distances, (distances.min(), distances.max()), (0, 1)).reshape(-1)
 
-        logreg = LogisticRegression(solver='lbfgs', n_jobs=multiprocessing.cpu_count()-2, max_iter=1000)
+        logreg = LogisticRegression(
+            solver='lbfgs', 
+            n_jobs=multiprocessing.cpu_count()-2, 
+            max_iter=1000
+            )
         
         perturbed_predictions = self.model.predict(perturbed_data)
         
+        if np.unique(perturbed_predictions).shape[0] == 1:
+            print("bad finish")
+            return np.zeros(x.shape[0])
+
         logreg.fit(binary_rep, perturbed_predictions, sample_weight=distances)
 
         explanation = logreg.coef_[0].reshape(-1)
 
-        explanation = np.interp(explanation, (explanation.min(), explanation.max()), (0, 1))
-        explanation = np.repeat(explanation, x.shape[0] // explanation.shape[0])
+        w = np.interp(explanation, (explanation.min(), explanation.max()), (0, 1))
 
-        return explanation
+        w = w.astype(np.float32)
+
+        return w.tolist()
 
 
 if __name__ == "__main__":
@@ -142,12 +145,3 @@ if __name__ == "__main__":
 
     sample = sample.reshape(-1)
     w = w.reshape(-1)
-
-    plot_simple_weighted(
-        sample, 
-        w, 
-        f"./plots/lime_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png",
-        model.model.__class__.__name__,
-        explainer.__class__.__name__,
-        dataset
-        )

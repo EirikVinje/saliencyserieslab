@@ -6,6 +6,10 @@ import os
 from sklearn.metrics import accuracy_score
 from sktime.utils import mlflow_sktime
 import numpy as np
+
+# get softmax
+import keras
+
 # from sktime.classification.shapelet_based import ShapeletTransformClassifier
 from sktime.classification.deep_learning import InceptionTimeClassifier
 from sktime.classification.distance_based import ProximityForest
@@ -33,6 +37,9 @@ class SktimeClassifier:
         self.name = self.model.__class__.__name__
         self.model.verbose = False
 
+        if model_path.split("/")[-1].split("_")[0] == "weasel":
+            self.model.support_probabilities = True
+
 
     def fit(self, x : np.ndarray, y : np.ndarray):
         self.model.fit(x, y)
@@ -58,7 +65,8 @@ class SktimeClassifier:
 
     def predict(self, x : np.ndarray, verbose : bool = False):
         
-        assert len(x.shape) == 2, "Input must be a 2D numpy array"
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
 
         if verbose:
             self.model.verbose = True
@@ -74,7 +82,8 @@ class SktimeClassifier:
 
     def predict_proba(self, x : np.ndarray, verbose : bool = False):
         
-        assert len(x.shape) == 2, "Input must be a 2D numpy array"
+        if len(x.shape) == 1:
+            x = x.reshape(1, -1)
 
         if verbose:
             self.model.verbose = True
@@ -98,6 +107,10 @@ class SktimeClassifier:
             accuracy = accuracy_score(predictions, y)
             return accuracy
         
+
+    def __call__(self, x : np.ndarray) :
+        return self.predict(x)
+
 
     def _load_resnet(self):
 
@@ -162,25 +175,38 @@ class SktimeClassifier:
 
 
 
-# class MrsqmClassifier:
+class Weasel:
 
-#     def __init__(self):
+    def __init__(self):
         
-#         self.model = MrSQMClassifier()
-#         self.name = self.model.__class__.__name__
-
-    
-#     def fit(self, x : np.ndarray, y : np.ndarray):
-#         self.model.fit(x, y)
+        self.model = None
+        self.name = None
 
 
-#     def predict(self, x : np.ndarray):
-#         return self.model.predict(x)
-    
-
-#     def explain_instance(self, x : np.ndarray):
+    def load_pretrained_model(self, model_path : str):
         
-#         explanation = self.model.get_saliency_map(x)
-#         print(explanation)
+        self.model = mlflow_sktime.load_model(model_path)
+        self.name = self.model.__class__.__name__
+        self.model.support_probabilities=True
+
+
+    def predict(self, x : np.ndarray):
+        return self.model.predict(x)
+
+
+    def predict_proba(self, x : np.ndarray):
+
+        scores = self.model.decision_function(x)
+
+        scores = keras.activations.softmax(scores)
+
+        print(scores)
+
+
+
+    def explain_instance(self, x : np.ndarray):
+        
+        explanation = self.model.get_saliency_map(x)
+        print(explanation)
 
 

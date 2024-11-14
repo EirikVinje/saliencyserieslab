@@ -1,230 +1,132 @@
-from typing import Callable
-import multiprocessing
-import datetime
-import pickle
-import json
-import os
+from typing import Any, List
+import time
 
-from sklearn.metrics.pairwise import pairwise_distances
-from sklearn.linear_model import LogisticRegression, LinearRegression
-from aeon.datasets import load_classification
-from scipy.spatial.distance import euclidean
-from scipy import signal
-from tqdm import tqdm
 import numpy as np
-import shap
+
+from saliencyserieslab.explainers.leftist.timeseries.transform_function.rand_background_transform import RandBackgroundTransform
+from saliencyserieslab.explainers.leftist.timeseries.transform_function.straightline_transform import StraightlineTransform
+from saliencyserieslab.explainers.leftist.timeseries.segmentator.uniform_segmentator import UniformSegmentator
+from saliencyserieslab.explainers.leftist.learning_process.SHAP_learning_process import SHAPLearningProcess
+from saliencyserieslab.explainers.leftist.learning_process.LIME_learning_process import LIMELearningProcess
+from saliencyserieslab.explainers.leftist.timeseries.transform_function.mean_transform import MeanTransform
+from saliencyserieslab.explainers.leftist.LEFTIST import LEFTIST
 
 from saliencyserieslab.classifier import SktimeClassifier
-from saliencyserieslab.plotting import plot_weighted_graph, plot_graph, plot_simple_weighted
+from saliencyserieslab.load_data import UcrDataset
+from saliencyserieslab.plotting import plot_weighted
 
 class LeftistExplainer:
+
     def __init__(
-            self, 
-            model, 
-            random_background : np.ndarray = None,
-            perturbation_ratio : float=0.4, 
-            n_reduce_dims : int = None,
-            num_samples : int=5000, 
-            segment_size : int=1,
-            method : str = "lime",
+            self,
+            model : Any, 
+            background : np.ndarray,
+            nb_interpretable_feature : int,
+            transform_name : str = "random_background",
+            learning_process : str="SHAP", #LIME
+            random_state : int = 42,
             ):
 
-        self.perturbation_ratio = perturbation_ratio
-        self.random_background = random_background
-        self.n_reduce_dims = n_reduce_dims
-        self.segment_size = segment_size
-        self.num_samples = num_samples
-        self.method = method
+        self.nb_interpretable_feature = nb_interpretable_feature
+        self.learning_process = learning_process
+        self.transform_name = transform_name
+        self.random_state = random_state
+        self.background = background
         self.model = model
-        
 
-    def _make_perturbed_data(self, x : np.array, progress_bar : bool = True):
 
-        assert len(x.shape) == 1, "reshape x to : (n,)"
+    def explain_instance(self, x : np.ndarray, y : np.ndarray) -> List[float]:
 
-        x_copy = x.copy()
+        if self.learning_process == 'SHAP':
+            learning_process = SHAPLearningProcess(x, self.model, self.background)
+
+        elif self.learning_process == 'LIME':
+            learning_process = LIMELearningProcess(self.random_state)
+
+        if self.transform_name == "random_background":
+            self.transform = RandBackgroundTransform(x)
+            self.transform.set_background_dataset(self.background)
         
-        mod = x_copy.shape[0] % self.segment_size
-        if mod != 0:
-            x_copy = x_copy[:-mod]
+        elif self.transform_name == "mean":
+            self.transform = MeanTransform(x)
         
-        num_segments = x_copy.shape[0] // self.segment_size
-        
-        perturbed_matrix = np.random.choice(
-            [0, 1], 
-            size=(self.num_samples, num_segments), 
-            p=[self.perturbation_ratio, 1-self.perturbation_ratio]
+        elif self.transform_name == "straight_line":
+            self.transform = StraightlineTransform(x)
+
+        segmentator = UniformSegmentator(self.nb_interpretable_feature)
+        leftist = LEFTIST(self.transform, segmentator, self.model, learning_process)
+
+        w = leftist.explain(
+            nb_neighbors=1000, 
+            explained_instance=x, 
+            explanation_size=self.nb_interpretable_feature, 
+            idx_label=y,
             )
         
-        perturbed_data = []
+        if self.learning_process == 'SHAP':
+            w = w[0]
+
+        w = np.interp(w, (w.min(), w.max()), (0, 1))
+
+        w = np.interp(
+            np.linspace(0, w.shape[0] - 1, x.shape[0]),
+            np.arange(w.shape[0]),
+            w,
+        )
+
+        w = w.astype(np.float32)
+
+        return w.tolist()
         
-        with tqdm(total=int(self.num_samples*num_segments), disable=not progress_bar, desc="Perturbing data") as bar:
-
-            for i in range(self.num_samples):
-                x_perturb = x.copy()
-
-                for j in range(num_segments):
-                        
-                    if perturbed_matrix[i, j] == 0:
-                        
-                        start = j * self.segment_size
-                        end = start + self.segment_size
-
-                        method = np.random.choice(["linear_interpolation", "constant", "random_background"])
-
-                        if method == 'linear_interpolation':
-                            x_perturb = self._perturb_linear_interpolation(x_perturb, start, end)
-                        elif method == 'constant':
-                            x_perturb = self._perturb_constant(x_perturb, start, end)
-                        elif method == 'random_background':
-                            x_perturb = self._perturb_random_background(x_perturb, start, end)
-
-                    bar.update(1)
-
-                perturbed_data.append(x_perturb)
-
-        perturbed_data = np.vstack(perturbed_data)
-
-        perturbed_binary = perturbed_matrix 
-
-        return perturbed_data, perturbed_binary
-
-
-    def _perturb_linear_interpolation(self, x : np.ndarray, start_idx : int, end_idx : int):
-        
-        if end_idx >= x.shape[0]:
-            end_idx = x.shape[0]-1
-
-        perturbation = np.linspace(x[start_idx], x[end_idx], end_idx - start_idx)
-        x[start_idx:end_idx] = perturbation
-        return x
-    
-
-    def _perturb_constant(self, x : np.ndarray, start_idx : int, end_idx : int):
-
-        perturbation = np.repeat(x[start_idx], end_idx - start_idx)
-        x[start_idx:end_idx] = perturbation
-        return x
-    
-
-    def _perturb_random_background(self, x : np.ndarray, start_idx : int, end_idx : int):
-        
-        rand_idx = np.random.choice(range(self.random_background.shape[0]))
-        perturbation = self.random_background[rand_idx, start_idx:end_idx]
-        
-        x[start_idx:end_idx] = perturbation
-        return x
-
-
-    def explain_instance(
-            self,
-            x : np.ndarray,
-    ):
-        
-        """
-        Explains an instance x with either "lime" or "kernelshap".
-
-        :param x: The instance to explain.
-        :param explainer: The explainer to use, either "lime" or "kernelshap".
-        :return: The explanation.
-        
-        """
-
-        if self.method == "lime":
-
-            perturbed_data, binary_rep = self._make_perturbed_data(x)
-            
-            distances = pairwise_distances(perturbed_data, x.reshape(1, -1), metric='euclidean')
-            distances = np.interp(distances, (distances.min(), distances.max()), (0, 1)).reshape(-1)
-  
-            perturbed_predictions = self.model.predict(perturbed_data)
-            
-            logreg = LogisticRegression(
-                solver='lbfgs', 
-                n_jobs=multiprocessing.cpu_count()-2, 
-                max_iter=1000
-                )
-            logreg.fit(binary_rep, perturbed_predictions, sample_weight=distances)
-
-            explanation = logreg.coef_[0].reshape(-1)
-
-            explanation = np.interp(explanation, (explanation.min(), explanation.max()), (0, 1))
-            explanation = np.repeat(explanation, x.shape[0] // explanation.shape[0])
-
-            return explanation
-        
-        elif self.method == "shap": 
-
-            x = (x - x.mean()) / x.std()
-            
-            perturbed_data, _ = self._make_perturbed_data(x)
-            perturbed_data = shap.sample(perturbed_data, 10)
-
-            print("perturbed data shape : {}".format(perturbed_data.shape))
-            print("x shape : {}".format(x.shape))
-            
-            shap_explainer = shap.KernelExplainer(self.model.predict, perturbed_data)
-            w = shap_explainer.shap_values(x, gc_collect=True, silent=True).reshape(-1)
-
-            print(w)
-            
-            w = np.interp(w, (w.min(), w.max()), (0, 1))
-
-            print("w shape: ", w.shape)
-            
-            return w
-
-
-    
-
 
 if __name__ == "__main__":
-    
-    np.random.seed(42)
 
-    modelpath = "./models/rocket_ECG200_1"
+
+    modelpath = "./models/rocket_SwedishLeaf_1"
+
     dataset = modelpath.split("/")[-1].split("_")[1]
 
     model = SktimeClassifier()
     model.load_pretrained_model(modelpath)
 
-    test = load_classification(dataset, split="test")
+    print("loaded model : {}".format(model.model.__class__.__name__))
 
-    unique_classes = np.unique(test[1]).tolist()
-    unique_classes = [int(c) for c in unique_classes]
-    unique_classes.sort()
- 
-    test = {
-        "x" : test[0].squeeze(),
-        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
-    }
+    dataset = modelpath.split("/")[-1].split("_")[1]
+    ucr = UcrDataset(
+        name=dataset,
+        float_dtype=32,
+        scale=True,
+    )
 
-    method = "shap"
+    test_x, test_y = ucr.load_split("test")
+
+    print("loaded dataset : {}".format(ucr.name))
+    print("test shape : {}".format(test_x.shape))
+
+    idx = 50
+    sample = test_x[idx]
+    sample_y = test_y[idx]
+    learning_process = "LIME"
+    
     explainer = LeftistExplainer(
-        random_background=test["x"],
-        perturbation_ratio=0.5,
-        num_samples=1_000,
-        n_reduce_dims=48,
-        segment_size=3,
-        method=method,
-        model=model, 
-        )
+        nb_interpretable_feature=30,
+        learning_process=learning_process,
+        background=test_x,
+        random_state=42,
+        model=model,
+    )
     
-    print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
-    
-    sample = test["x"][np.random.randint(0, test["x"].shape[0])]
+    start_t = time.time()
+    w = explainer.explain_instance(sample, sample_y)
+    end_t = time.time()
 
-
-    w = explainer.explain_instance(sample)
-
-    sample = sample.reshape(-1)
-    w = w.reshape(-1)
-
-    plot_simple_weighted(
-        sample, 
-        w, 
-        f"./plots/simple_leftist_{method}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png",
-        model.model.__class__.__name__,
-        explainer.__class__.__name__,
-        dataset
+    plot_weighted(
+        ts=sample, 
+        w=w, 
+        modelname=modelpath.split("/")[-1].split("_")[0],
+        save_path="./plots/leftist_{}_123123.png".format(learning_process),
+        explainername="leftist",
+        dataset=dataset, 
+        show=False, 
+        colormap="jet",
         )

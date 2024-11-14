@@ -11,7 +11,7 @@ import numpy as np
 from saliencyserieslab.plotting import plot_weighted_graph
 
 class PerturbedDataGenerator:
-    def __init__(self, explanations : np.ndarray, X : np.ndarray):
+    def __init__(self):
         
         """
         Perturbes the input data given a model and explainer.
@@ -21,16 +21,40 @@ class PerturbedDataGenerator:
             2. Select top k percent indices to perturb
             
         3. Return perturbed data
+        """
+        pass
 
+        
+    def __call__(
+            self,
+            X : np.ndarray,
+            W : np.ndarray, 
+            method : str,
+            k : float, 
+            ):
+        
+        """
         :param The trained model model: 
         :param The explanations (2D numpy array) explanations: 
         :param The original data (2D numpy array) X: 
         :param The original labels (1D numpy array) Y:
         """
 
-        self.W = explanations
-        self.X = X
+        # Sort explanation indices based on weight
+        sorted_idx = np.argsort(W, axis=1)[:, ::-1]
 
+        # Select top k percent indices to perturb
+        top_idx = int(k * W.shape[1])
+        perturbed_idx = sorted_idx[:, :top_idx]
+
+        # Perturb the input data
+        perturbed_data = X.copy()
+
+        for i in range(perturbed_data.shape[0]):
+            perturbed_data[i, perturbed_idx[i]] = self._perturb_data(perturbed_data[i, perturbed_idx[i]], method)
+
+        return perturbed_data
+    
 
     def _perturb_data(self, data_to_perturb : np.ndarray, method : str='local_mean'):
 
@@ -44,26 +68,7 @@ class PerturbedDataGenerator:
             mean = np.mean(data_to_perturb)
             std = np.std(data_to_perturb)
             data_to_perturb[:] = np.random.normal(mean, std, data_to_perturb.shape[0])
-            return data_to_perturb        
-
-
-        
-    def generate(self, k : float=0.1, method : str='local_mean'):
-
-        # Sort explanation indices based on weight
-        sorted_idx = np.argsort(self.W, axis=1)[:, ::-1]
-
-        # Select top k percent indices to perturb
-        top_idx = int(k * self.W.shape[1])
-        perturbed_idx = sorted_idx[:, :top_idx]
-
-        # Perturb the input data
-        perturbed_data = self.X.copy()
-
-        for i in range(perturbed_data.shape[0]):
-            perturbed_data[i, perturbed_idx[i]] = self._perturb_data(perturbed_data[i, perturbed_idx[i]], method)
-
-        return perturbed_data
+            return data_to_perturb   
     
 
 if __name__ == "__main__":

@@ -17,25 +17,27 @@ from sktime.utils import mlflow_sktime
 import numpy as np
 
 from saliencyserieslab.classifier import SktimeClassifier
-from generate_config import generate_config
+from saliencyserieslab.load_data import UcrDataset
 
 
-def train_classifier(model, traindata, evaldata, save_model : bool = False):
-
-    model_save_path = f'./models/{MODEL_NAME}_{DATASET}_{MODEL_ID}'
+def train_classifier(
+        model, 
+        save_model : bool,
+        train_x : np.ndarray,
+        train_y : np.ndarray, 
+        eval_x : np.ndarray,
+        eval_y : np.ndarray,
+        model_save_path : str,
+        ):
     
     if os.path.exists(model_save_path):
         raise RuntimeError("model already exists at {}".format(model_save_path))
-
-    train_x, train_y = traindata['x'], traindata['y']
 
     print("starting training...")
     start = time.time()
     model.fit(train_x, train_y)
     end = time.time()   
     print("finished training")
-
-    eval_x, eval_y = evaldata['x'], evaldata['y']
     
     print("evaluating model...")
     predictions = model.predict(eval_x, verbose=True)
@@ -68,7 +70,6 @@ def train_classifier(model, traindata, evaldata, save_model : bool = False):
         print("model and results saved to {}".format(model_save_path))
         time.sleep(3)
 
-    
     if not os.path.isfile("./training_report.csv"):
 
         with open("./training_report.csv", 'w') as f:
@@ -100,38 +101,34 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default="Plane", help='dataset to load from ucr archive')
     parser.add_argument('--model', type=str, default="inception", help='sktime model [inception, rocket, resnet, mrseql]')
     parser.add_argument('--save', action=argparse.BooleanOptionalAction, default=False, help='save model')
+    parser.add_argument('--savedir', type=str, default='./models', help='path to save model')
     parser.add_argument('--id', type=str, default="1010101", help='model id')
     args = parser.parse_args()
 
     DATASET = args.dataset
     MODEL_NAME = args.model
     MODEL_ID = args.id
+    savedir = args.savedir
     save = args.save if args.save else False
+    
+    if not os.path.isdir(savedir):
+        os.mkdir(savedir)
 
-    train = load_classification(DATASET, split="train")
-    test = load_classification(DATASET, split="test")
+    ucr = UcrDataset(
+        name=DATASET,
+        float_dtype=16,
+        scale=True,
+        n_dims=16,
+    )
 
-    unique_classes = np.unique(train[1]).tolist()
-    unique_classes = [int(c) for c in unique_classes]
-    unique_classes.sort()
- 
-    train = {
-        "x" : train[0].squeeze(),
-        "y" : np.array([unique_classes.index(int(c)) for c in train[1]]),
-    }
+    train_x, train_y = ucr.load_split("train")
+    test_x, test_y = ucr.load_split("test")
 
-    test = {
-        "x" : test[0].squeeze(),
-        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
-    }
-
-    scaler = StandardScaler()
-    train['x'] = scaler.fit_transform(train['x'])
-    test['x'] = scaler.transform(test['x'])
+    unique_classes = np.unique(train_y).tolist()
 
     print("dataset : {}".format(DATASET))
-    print("train : {}, {}".format(train['x'].shape, train['y'].shape))
-    print("test : {}, {}".format(test['x'].shape, test['y'].shape))
+    print("train : {}, {}".format(train_x.shape, train_y.shape))
+    print("test : {}, {}".format(test_x.shape, test_x.shape))
     print("number of classes : {}".format(len(unique_classes)))
     time.sleep(3)
 
@@ -144,4 +141,14 @@ if __name__ == '__main__':
     pprint(model.model.__dict__, sort_dicts=False)
     print()
 
-    train_classifier(model, train, test, save)
+    model_save_path = os.path.join(savedir, f"{MODEL_NAME}_{DATASET}_{MODEL_ID}")
+
+    train_classifier(
+        model=model,
+        train_x=train_x,
+        train_y=train_y,
+        eval_x=test_x,
+        eval_y=test_y,
+        save_model=save,
+        model_save_path=model_save_path,
+    )

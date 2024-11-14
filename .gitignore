@@ -1,6 +1,7 @@
 # Using https://github.com/github/gitignore/blob/master/Python.gitignore
 
 # local stuff
+weights/
 results/
 plots/
 data/
