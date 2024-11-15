@@ -7,7 +7,6 @@ weight_gen_report.csv
 weights/
 results/
 plots/
-data/
 log/
 
 *.keras
