@@ -1,6 +1,9 @@
 # Using https://github.com/github/gitignore/blob/master/Python.gitignore
 
 # local stuff
+training_report.csv
+weight_gen_report.csv
+
 weights/
 results/
 plots/

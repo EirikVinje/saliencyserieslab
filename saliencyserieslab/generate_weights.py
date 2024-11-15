@@ -11,7 +11,6 @@ import numpy as np
 
 from saliencyserieslab.explainers.load_explainer import load_explainer
 from saliencyserieslab.classifier import SktimeClassifier
-from saliencyserieslab.load_data import UcrDataset
 
 
 def generate_explanations(
@@ -90,13 +89,10 @@ if __name__ == "__main__":
     if not os.path.isdir(root):
         os.mkdir(root)    
 
-    ucr = UcrDataset(
-        name=dataset,
-        float_dtype=32,
-        scale=False,
-    )
+    with open("./data/{}.pkl".format(dataset), 'rb') as f:
+        data = pickle.load(f)
 
-    test_x, test_y = ucr.load_split("test", testsize)
+    test_x, test_y = data[2], data[3]
 
     starttime = time.time()
 

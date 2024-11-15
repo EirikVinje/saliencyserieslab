@@ -84,7 +84,9 @@ class SHAPLearningProcess(LearningProcess):
         Returns:
             self.mean_background_dataset_proba_labels (np.ndarray): mean of the classification of the background dataset.
         """
+
         predictions = model_to_explain.predict_proba(background_dataset)
+        
         if len(predictions[0]) == 1:
             predictions = np.array([np.array([el[0],1-el[0]]) for el in predictions])
         return np.mean(predictions, axis=0)

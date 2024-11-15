@@ -54,10 +54,21 @@ def train_classifier(
     for label, item in list(report.items())[:np.unique(train_y).shape[0]]:
         print(f'{label} : precision : {item["precision"]}')
     print()
+    
+    if accuracy >= 0.85:
+        save_model = True
 
     if save_model:
-        mlflow_sktime.save_model(model.model, model_save_path)
+
+        if MODEL_NAME != "mrseql":
+            mlflow_sktime.save_model(model.model, model_save_path)
         
+        else:
+            os.mkdir(model_save_path)
+            pkl_save_path = os.path.join(model_save_path, f"{MODEL_NAME}_{DATASET}_{MODEL_ID}" + ".pkl")
+            with open(pkl_save_path, 'wb') as f:
+                pickle.dump(model, f)
+
         training_report = {
             "accuracy" : accuracy,
             "precisions" : list(report.items())[np.unique(train_y).shape[0]:],
@@ -70,17 +81,17 @@ def train_classifier(
         print("model and results saved to {}".format(model_save_path))
         time.sleep(3)
 
-    if not os.path.isfile("./training_report.csv"):
+        if not os.path.isfile("./training_report.csv"):
 
-        with open("./training_report.csv", 'w') as f:
+            with open("./training_report.csv", 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(["dataset", "model", "accuracy", "training_time", "datetime"])
+
+        with open("./training_report.csv", 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(["dataset", "model", "accuracy", "training_time", "datetime"])
+            writer.writerow([DATASET, MODEL_NAME, accuracy, training_report["training_time"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
 
-    with open("./training_report.csv", 'a') as f:
-        writer = csv.writer(f)
-        writer.writerow([DATASET, MODEL_NAME, accuracy, training_report["training_time"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-
-    print("training report saved in {}".format("./training_report.csv"))
+        print("training report saved in {}".format("./training_report.csv"))
 
 
 if __name__ == '__main__':
@@ -116,9 +127,8 @@ if __name__ == '__main__':
 
     ucr = UcrDataset(
         name=DATASET,
-        float_dtype=16,
-        scale=True,
-        n_dims=16,
+        float_dtype=32,
+        scale=False,
     )
 
     train_x, train_y = ucr.load_split("train")
