@@ -40,7 +40,7 @@ def train_classifier(
     print("finished training")
     
     print("evaluating model...")
-    predictions = model.predict(eval_x, verbose=True)
+    predictions = model.predict(eval_x)
     print("finished evaluation")
     
     accuracy = accuracy_score(eval_y, predictions)
@@ -67,7 +67,7 @@ def train_classifier(
             os.mkdir(model_save_path)
             pkl_save_path = os.path.join(model_save_path, f"{MODEL_NAME}_{DATASET}_{MODEL_ID}" + ".pkl")
             with open(pkl_save_path, 'wb') as f:
-                pickle.dump(model, f)
+                pickle.dump(model.model, f)
 
         training_report = {
             "accuracy" : accuracy,
@@ -125,21 +125,18 @@ if __name__ == '__main__':
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
 
-    ucr = UcrDataset(
-        name=DATASET,
-        float_dtype=32,
-        scale=False,
-    )
+    with open("./data/{}.pkl".format(DATASET), 'rb') as f:
+        data = pickle.load(f)
 
-    train_x, train_y = ucr.load_split("train")
-    test_x, test_y = ucr.load_split("test")
+    train_x, train_y = data[0], data[1]
+    test_x, test_y = data[2], data[3]
 
-    unique_classes = np.unique(train_y).tolist()
+    unique_classes = np.unique(train_y)
 
     print("dataset : {}".format(DATASET))
     print("train : {}, {}".format(train_x.shape, train_y.shape))
     print("test : {}, {}".format(test_x.shape, test_x.shape))
-    print("number of classes : {}".format(len(unique_classes)))
+    print("number of classes : {}".format(unique_classes.shape))
     time.sleep(3)
 
     model = SktimeClassifier()

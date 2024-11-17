@@ -19,7 +19,7 @@ def generate_explanations(
         test_y : np.ndarray,
         explainername : str,
         savedir : str,
-        dataset
+        dataset : str,
         ):
     
     model = SktimeClassifier()
@@ -47,7 +47,7 @@ def generate_explanations(
 
             w = np.interp(w, (w.min(), w.max()), (0, 1)).tolist()
             
-            with open(os.path.join(savedir, weight_path), 'a') as f:
+            with open(full_weight_path, 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(w)
 
@@ -73,9 +73,8 @@ if __name__ == "__main__":
 
     root = "./weights"
     explainername = "mrseql"
-    modelname = args.model
-    dataset = modelname.split("/")[-1].split("_")[1]
-    testsize = args.testsize
+    modelpath = args.model
+    dataset = modelpath.split("/")[-1].split("_")[1]
 
     if not os.path.isdir(root):
         os.mkdir(root)    
@@ -88,12 +87,12 @@ if __name__ == "__main__":
     starttime = time.time()
 
     generate_explanations(
-        modelname, 
-        explainername,
-        test_x,
-        test_y,
-        root,
-        dataset,
+        modelpath=modelpath, 
+        test_x=test_x,
+        test_y=test_y,
+        explainername=explainername,
+        savedir=root,
+        dataset=dataset,
         )
     
     endtime = time.time()
@@ -102,4 +101,4 @@ if __name__ == "__main__":
 
     with open(LOGFILE, 'a') as f:
         writer = csv.writer(f)
-        writer.writerow([modelname, explainername, dataset, True, runtime, datetime.datetime.now(), None])
+        writer.writerow([modelpath, explainername, dataset, True, runtime, datetime.datetime.now(), None])

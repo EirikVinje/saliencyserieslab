@@ -25,6 +25,8 @@ class SktimeClassifier:
 
     def load_pretrained_model(self, model_path : str):
         
+        print("loading model from {}".format(model_path))
+
         if model_path.split("/")[-1].split("_")[0] == "mrseql":
             
             modelpath_pkl = os.path.join(model_path, model_path.split("/")[-1] + ".pkl") 
@@ -32,8 +34,13 @@ class SktimeClassifier:
             with open(modelpath_pkl, 'rb') as f:
                 self.model = pickle.load(f)
             
+            print("loaded model : {}".format(self.model.__class__.__name__))
+            
         else:
             self.model = mlflow_sktime.load_model(model_path)
+
+            print("loaded model : {}".format(self.model.__class__.__name__))
+
         
         self.name = self.model.__class__.__name__
 
@@ -109,6 +116,7 @@ class SktimeClassifier:
     def _load_rocket(self):
 
         self.model = RocketClassifier(
+            num_kernels=5000,
             random_state=42,
             n_jobs=N_JOBS,
             )

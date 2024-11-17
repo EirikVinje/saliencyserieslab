@@ -8,8 +8,6 @@ import os
 
 import numpy as np
 
-from saliencyserieslab.plotting import plot_weighted_graph
-
 class PerturbedDataGenerator:
     def __init__(self):
         
@@ -40,49 +38,45 @@ class PerturbedDataGenerator:
         :param The original labels (1D numpy array) Y:
         """
 
+        if k == 0.0:
+            return X
+
         # Sort explanation indices based on weight
         sorted_idx = np.argsort(W, axis=1)[:, ::-1]
 
         # Select top k percent indices to perturb
         top_idx = int(k * W.shape[1])
+        
         perturbed_idx = sorted_idx[:, :top_idx]
 
         # Perturb the input data
         perturbed_data = X.copy()
 
         for i in range(perturbed_data.shape[0]):
-            perturbed_data[i, perturbed_idx[i]] = self._perturb_data(perturbed_data[i, perturbed_idx[i]], method)
+            perturbed_data[i, perturbed_idx[i]] = self._perturb_data(perturbed_data[i, perturbed_idx[i]], perturbed_data[i], method)
 
         return perturbed_data
     
 
-    def _perturb_data(self, data_to_perturb : np.ndarray, method : str='local_mean'):
+    def _perturb_data(self, data_to_perturb : np.ndarray, orig_data : np.ndarray, method : str='local_mean'):
+    
 
         if method == 'local_mean':
-
+            
             data_to_perturb[:] = np.mean(data_to_perturb)
             return data_to_perturb 
 
-        elif method == 'local_gaussian':
+        elif method == 'global_mean':
             
-            mean = np.mean(data_to_perturb)
-            std = np.std(data_to_perturb)
-            data_to_perturb[:] = np.random.normal(mean, std, data_to_perturb.shape[0])
-            return data_to_perturb   
-    
+            data_to_perturb[:] = np.mean(orig_data)
+            return data_to_perturb
+        
+        elif method == 'local_gaussian':
 
-if __name__ == "__main__":
+            data_to_perturb[:] = np.random.normal(np.mean(data_to_perturb), scale=np.std(data_to_perturb), size=data_to_perturb.shape[0])
+            return data_to_perturb
 
-    with open("./data/insectsound/insectsound_test.pkl", 'rb') as f:
-        evaldata = pickle.load(f)
-    
-    sample_x = evaldata["x"][0]
-    sample_w = np.full(sample_x.shape[0], 0.3)
-
-    sample_w[100:200] = 0.7
-
-    generator = PerturbedDataGenerator(sample_w.reshape(1, -1), sample_x.reshape(1,-1))
-    
-    plot_weighted_graph(sample_x.reshape(-1), sample_w.reshape(-1), "./plots/before_perturb.png")
-    perturbed_data = generator.generate(k=0.17, method="local_gaussian")
-    plot_weighted_graph(perturbed_data.reshape(-1), sample_w.reshape(-1), "./plots/after_perturb.png")
+        elif method == 'global_gaussian':
+            
+            data_to_perturb[:] = np.random.normal(np.mean(orig_data), scale=np.std(orig_data), size=data_to_perturb.shape[0])
+            return data_to_perturb
