@@ -4,8 +4,6 @@
 training_report.csv
 weight_gen_report.csv
 
-weights/
-results/
 plots/
 log/
 

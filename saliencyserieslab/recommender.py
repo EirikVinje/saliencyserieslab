@@ -93,6 +93,9 @@ def recommender(
 
             test_x, test_y = datasets[dataset_name]
 
+            if dataset_name not in record_euc[model_name].keys():
+                record_euc[model_name][dataset_name] = {}
+
             for explainer_name in explainers:
 
                 bar.set_description("EAUC : ({} - {} - {})".format(model_name, explainer_name, dataset_name))
@@ -111,7 +114,7 @@ def recommender(
                     W=W,
                     )
 
-                record_euc[model_name][explainer_name] = accuracy
+                record_euc[model_name][dataset_name][explainer_name] = accuracy
 
                 bar.update(1)
 
@@ -124,15 +127,15 @@ if __name__ == '__main__':
         raise RuntimeError('Please run this script in the root directory of the repository')
 
     models = [
-        "./models/rocket_SwedishLeaf_1",
-        "./models/rocket_ECG200_1",
-        "./models/rocket_Plane_1",
-        "./models/mrseql_SwedishLeaf_1",
-        "./models/mrseql_ECG200_1",
-        "./models/mrseql_Plane_1",
-        "./models/resnet_SwedishLeaf_1",
-        "./models/resnet_ECG200_1",
-        "./models/resnet_Plane_1",
+        "./models2/rocket_SwedishLeaf_1",
+        "./models2/rocket_ECG200_1",
+        "./models2/rocket_Plane_1",
+        "./models2/mrseql_SwedishLeaf_1",
+        "./models2/mrseql_ECG200_1",
+        "./models2/mrseql_Plane_1",
+        "./models2/resnet_SwedishLeaf_1",
+        "./models2/resnet_ECG200_1",
+        "./models2/resnet_Plane_1",
     ]
 
     explainers = [
