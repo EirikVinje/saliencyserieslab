@@ -1,10 +1,10 @@
-This repository holds the code for the IKT463 (AI in Society) project.
+This repository holds the code for the IKT463 project.
 
-#### Conda environment installation
+# Evaluating post-hoc XAI methods for Time-Series Classification: Faithfulness and Interpretability Assessment Using the AMEE Frame
+
+
+### Installation
 ```bash
-conda create --name ssl python==3.10
-pip install -U sktime[all_extras]
-pip install tensorflow[and-cuda]
-pip install dash
-pip install aeon
+pip install e.
+pip install -r requirements.txt
 ```
