@@ -5,5 +5,4 @@ This repository holds the code for the IKT463 project.
 #### Installation
 ```bash
 pip install e.
-pip install -r requirements.txt
 ```
