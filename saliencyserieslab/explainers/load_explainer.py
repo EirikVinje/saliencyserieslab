@@ -2,11 +2,8 @@
 import numpy as np
 
 from saliencyserieslab.explainers.shap_explainer import KernelShapExplainer, ShapExplainer
-from saliencyserieslab.explainers.lime_explainer import LimeExplainer
 from saliencyserieslab.explainers.leftist_explainer import LeftistExplainer
-
-
-
+from saliencyserieslab.explainers.lime_explainer import LimeExplainer
 
 
 def load_explainer(

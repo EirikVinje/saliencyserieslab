@@ -25,6 +25,7 @@ for exp in "${explainers[@]}"; do
     python saliencyserieslab/generate_weights.py --model ./models/rocket_ECG200_1 --explainer ${exp} 
     python saliencyserieslab/generate_weights.py --model ./models/rocket_SwedishLeaf_1 --explainer ${exp} 
     python saliencyserieslab/generate_weights.py --model ./models/rocket_Plane_1 --explainer ${exp} 
+
 done
 
 python saliencyserieslab/generate_mrseql_weights.py --model ./models/mrseql_ECG200_1

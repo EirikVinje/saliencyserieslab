@@ -1,7 +1,0 @@
-{
-    "perturbation_ratio" : 0.7,
-    "adjacency_prob" : 0.9, 
-    "num_samples" : 10000,
-    "segment_size" : 25,
-    "sigma" : 0.1
-}

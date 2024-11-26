@@ -12,5 +12,5 @@ flavors:
     model_path: model
     python_version: 3.10.0
 mlflow_version: 2.17.2
-model_uuid: 38d774ab82ad4af498c9daae1dab0025
-utc_time_created: '2024-11-06 22:28:27.625208'
+model_uuid: a941479bcf284e378f607c4ddc67ee46
+utc_time_created: '2024-11-17 18:32:26.968051'

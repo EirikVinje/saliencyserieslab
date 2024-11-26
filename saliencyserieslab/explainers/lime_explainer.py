@@ -5,12 +5,13 @@ import pickle
 import json
 import os
 
-from sklearn.metrics.pairwise import pairwise_distances
-from sklearn.linear_model import LogisticRegression
-from aeon.datasets import load_classification
 from tqdm import tqdm
 import numpy as np
 import shap
+
+from sklearn.metrics.pairwise import pairwise_distances
+from sklearn.linear_model import LogisticRegression
+
 
 from saliencyserieslab.classifier import SktimeClassifier
 
@@ -74,14 +75,6 @@ class LimeExplainer:
 
     
     def explain_instance(self, x : np.ndarray, y : np.ndarray,) -> List[float]:
-        
-        """
-        Explains an instance x .
-
-        :param x: The instance to explain.
-        :return: The explanation.
-        
-        """
 
         perturbed_data, binary_rep = self._make_perturbed_data(x)
     
@@ -112,36 +105,3 @@ class LimeExplainer:
         return w.tolist()
 
 
-if __name__ == "__main__":
-    
-    np.random.seed(42)
-
-    modelpath = "./models/rocket_ECG200_1"
-    dataset = modelpath.split("/")[-1].split("_")[1]
-
-    model = SktimeClassifier()
-    model.load_pretrained_model(modelpath)
-
-    test = load_classification(dataset, split="test")
-
-    unique_classes = np.unique(test[1]).tolist()
-    unique_classes = [int(c) for c in unique_classes]
-    unique_classes.sort()
- 
-    test = {
-        "x" : test[0].squeeze(),
-        "y" : np.array([unique_classes.index(int(c)) for c in test[1]]),
-    }
-
-    explainer = LimeExplainer(
-        model=model,
-    )
-    
-    print("loaded model and explainer : ({}, {})".format(model.__class__.__name__, explainer.__class__.__name__))
-    
-    sample = test["x"][np.random.randint(0, test["x"].shape[0])]
-
-    w = explainer.explain_instance(sample)
-
-    sample = sample.reshape(-1)
-    w = w.reshape(-1)

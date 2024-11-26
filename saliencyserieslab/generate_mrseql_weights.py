@@ -8,7 +8,6 @@ import os
 from tqdm import tqdm
 import numpy as np
 
-
 from saliencyserieslab.explainers.load_explainer import load_explainer
 from saliencyserieslab.classifier import SktimeClassifier
 
